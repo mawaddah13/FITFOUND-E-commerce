@@ -17,8 +17,6 @@ if (!globalThis.pgPool) {
 
 pool = globalThis.pgPool;
 
-// Menjalankan beberapa query dalam satu transaksi (BEGIN ... COMMIT).
-// Jika ada error, semua perubahan dibatalkan (ROLLBACK).
 export async function withTransaction(callback) {
   const client = await pool.connect();
   try {

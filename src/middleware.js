@@ -1,0 +1,80 @@
+import { NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/token';
+
+
+function homeForRole(role) {
+  if (role === 'admin') {
+    return '/admin/dashboard';
+  }
+  if (role === 'seller') {
+    return '/seller/dashboard';
+  }
+  return '/';
+}
+
+
+export async function middleware(request) {
+  const pathname = request.nextUrl.pathname;
+  const cookieItem = request.cookies.get('fitfound_session');
+  let token = null;
+  if (cookieItem) {
+    token = cookieItem.value;
+  }
+
+  let user = null;
+  if (token) {
+    user = await verifyToken(token);
+  }
+
+  const isAdminArea = pathname.startsWith('/admin');
+  const isSellerArea = pathname.startsWith('/seller');
+  const isBuyerArea = pathname.startsWith('/buyer');
+
+  if (user && user.role === 'admin' && !isAdminArea) {
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+  }
+
+
+  if (user && (pathname === '/login' || pathname === '/register')) {
+    return NextResponse.redirect(new URL(homeForRole(user.role), request.url));
+  }
+
+
+  if (!isAdminArea && !isSellerArea && !isBuyerArea) {
+    return NextResponse.next();
+  }
+
+
+  if (!user) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+
+  if (isAdminArea && user.role !== 'admin') {
+    return NextResponse.redirect(new URL(homeForRole(user.role), request.url));
+  }
+
+
+  if (isSellerArea && user.role !== 'seller') {
+    return NextResponse.redirect(new URL('/buyer/dashboard', request.url));
+  }
+
+  if (isBuyerArea && user.role !== 'buyer' && user.role !== 'seller') {
+    return NextResponse.redirect(new URL(homeForRole(user.role), request.url));
+  }
+
+
+  return NextResponse.next();
+}
+
+
+export const config = {
+  matcher: [
+    {
+      source: '/((?!api|_next/static|_next/image|.*\\..*).*)',
+      missing: [{ type: 'header', key: 'next-action' }],
+    },
+  ],
+};

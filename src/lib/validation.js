@@ -37,7 +37,6 @@ export function isValidPrice(value) {
   return Number.isFinite(number) && number > 0 && number <= 9999999999;
 }
 
-// Cek stok produk (bilangan bulat 0 sampai 1.000.000)
 export function isValidStock(value) {
   if (value === '') {
     return false;
@@ -46,7 +45,6 @@ export function isValidStock(value) {
   return Number.isInteger(number) && number >= 0 && number <= 1000000;
 }
 
-// Rapikan ukuran ("s, M ,l" -> "S,M,L") tanpa duplikat dan spasi
 export function normalizeSizes(value) {
   if (!value) {
     return '';
@@ -66,7 +64,6 @@ export function normalizeSizes(value) {
   return unique.join(',');
 }
 
-// Pecah string ukuran dipisah koma menjadi array
 export function parseSizes(value) {
   if (!value || value.trim() === '') {
     return [];
