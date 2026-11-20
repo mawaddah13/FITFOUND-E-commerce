@@ -1,6 +1,8 @@
 import { cache } from 'react';
 import pool from './db';
-import { getSession } from './session';
+import { getSession, hasSessionCookie } from './session';
+import { redirect } from 'next/navigation';
+
 
 export const getCurrentUser = cache(async function getCurrentUser() {
   const session = await getSession();
@@ -44,9 +46,13 @@ export const getStoreByUserId = cache(async function getStoreByUserId(idUser) {
   return res.rows[0];
 });
 
-// Buyer dan Seller sama-sama boleh berbelanja (Seller tidak bisa membeli dari tokonya sendiri)
+
 export function isShopperRole(role) {
-  return role === 'buyer' || role === 'seller';
+  if (role === 'buyer' || role === 'seller') {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 export async function getShopperUser() {
