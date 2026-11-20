@@ -79,3 +79,51 @@ export async function getActiveSeller() {
   }
   return { user, store };
 }
+
+
+async function redirectToLogin() {
+  if (await hasSessionCookie()) {
+    redirect('/login?expired=1');
+  }
+  redirect('/login');
+}
+
+export async function requireBuyerPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    await redirectToLogin();
+  }
+  if (!isShopperRole(user.role)) {
+    redirect('/admin/dashboard');
+  }
+  return user;
+}
+
+export async function requireAdminPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    await redirectToLogin();
+  }
+  if (user.role !== 'admin') {
+    redirect('/');
+  }
+  return user;
+}
+
+export async function requireSellerPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    await redirectToLogin();
+  }
+  if (user.role !== 'seller') {
+    redirect('/');
+  }
+  if (user.status !== 'active') {
+    redirect('/seller/pending');
+  }
+  const store = await getStoreByUserId(user.id_user);
+  if (!store) {
+    redirect('/seller/pending');
+  }
+  return { user, store };
+}
