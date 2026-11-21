@@ -3,7 +3,7 @@ import pool from './db';
 import { getSession, hasSessionCookie } from './session';
 import { redirect } from 'next/navigation';
 
-
+// ambil data profil lengkap user yang sedang login dari database
 export const getCurrentUser = cache(async function getCurrentUser() {
   const session = await getSession();
   if (!session || !session.id) {
@@ -23,6 +23,7 @@ export const getCurrentUser = cache(async function getCurrentUser() {
   return res.rows[0];
 });
 
+// aktifkan kembali akun yang masa suspendny sudah selesai
 export async function liftExpiredSuspensions() {
   await pool.query(
     `UPDATE users
@@ -33,6 +34,7 @@ export async function liftExpiredSuspensions() {
   );
 }
 
+// ambil data toko punya user brdsrkn id user
 export const getStoreByUserId = cache(async function getStoreByUserId(idUser) {
   const res = await pool.query(
     `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, created_at
@@ -46,7 +48,7 @@ export const getStoreByUserId = cache(async function getStoreByUserId(idUser) {
   return res.rows[0];
 });
 
-
+// periksa apakah role termasuk shopper yaitu buyer atau seller
 export function isShopperRole(role) {
   if (role === 'buyer' || role === 'seller') {
     return true;
@@ -55,6 +57,7 @@ export function isShopperRole(role) {
   }
 }
 
+// ambil data user kalau sedang login n memiliki role buyer atau seller
 export async function getShopperUser() {
   const user = await getCurrentUser();
   if (!user || !isShopperRole(user.role)) {
@@ -63,6 +66,7 @@ export async function getShopperUser() {
   return user;
 }
 
+// ambil data user kalau sesuai role tertentu dan status akunnya aktif
 export async function getUserWithRole(role) {
   const user = await getCurrentUser();
   if (!user || user.role !== role) {
@@ -74,6 +78,7 @@ export async function getUserWithRole(role) {
   return user;
 }
 
+// ambil data seller aktif beserta tokonya jika sudah tersedia
 export async function getActiveSeller() {
   const user = await getUserWithRole('seller');
   if (!user) {
@@ -86,7 +91,7 @@ export async function getActiveSeller() {
   return { user, store };
 }
 
-
+// arahkan ke halaman login dengan tanda expired jika cookie sesi masih ada
 async function redirectToLogin() {
   if (await hasSessionCookie()) {
     redirect('/login?expired=1');
@@ -94,6 +99,7 @@ async function redirectToLogin() {
   redirect('/login');
 }
 
+// harus akses halaman khusus shopper dan kembalikan data user
 export async function requireBuyerPage() {
   const user = await getCurrentUser();
   if (!user) {
@@ -105,6 +111,7 @@ export async function requireBuyerPage() {
   return user;
 }
 
+// harus akses halaman khusus admin dan kembalikan data user
 export async function requireAdminPage() {
   const user = await getCurrentUser();
   if (!user) {
@@ -116,6 +123,7 @@ export async function requireAdminPage() {
   return user;
 }
 
+// harus akses halaman khusus seller aktif yang sudah punya toko
 export async function requireSellerPage() {
   const user = await getCurrentUser();
   if (!user) {

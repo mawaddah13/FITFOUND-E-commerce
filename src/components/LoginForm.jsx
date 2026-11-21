@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/format';
 const inputClass =
   'w-full px-4 py-3 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:border-(--biru) hover:border-neutral-300 text-neutral-900 placeholder:text-neutral-400';
 
+// susun label jumlah satuan jam atau hari yang tersisa
 function formatUnitLabel(value, singular, plural) {
   if (value > 1) {
     return `${value} ${plural} left`;
@@ -16,6 +17,7 @@ function formatUnitLabel(value, singular, plural) {
   return `${value} ${singular} left`;
 }
 
+// hitung sisa waktu suspend
 function timeLeft(until) {
   const diff = new Date(until).getTime() - Date.now();
   if (diff <= 0) {
@@ -29,6 +31,7 @@ function timeLeft(until) {
   return formatUnitLabel(days, 'day', 'days');
 }
 
+// pop up klo akun disuspen/nonaktif
 function BlockedDialog({ blocked, onClose }) {
   useEffect(() => {
     function handleKey(event) {
@@ -118,6 +121,7 @@ function BlockedDialog({ blocked, onClose }) {
   );
 }
 
+// tampilkan form login beserta pesan error, notifikasi, dan pop-up status akun
 export default function LoginForm({ nextPath = '', notice = '', onSwitch }) {
   const [state, formAction, isPending] = useActionState(loginAction, null);
   const [closedState, setClosedState] = useState(null);

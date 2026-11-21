@@ -45,6 +45,7 @@ export function isValidStock(value) {
   return Number.isInteger(number) && number >= 0 && number <= 1000000;
 }
 
+// merapikan string ukuran menjadi daftar ukuran unik terpisah koma
 export function normalizeSizes(value) {
   if (!value) {
     return '';
@@ -64,6 +65,7 @@ export function normalizeSizes(value) {
   return unique.join(',');
 }
 
+// memecah string ukuran menjadi array ukuran yang sudah dibersihkan
 export function parseSizes(value) {
   if (!value || value.trim() === '') {
     return [];

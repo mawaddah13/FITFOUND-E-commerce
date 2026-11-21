@@ -16,6 +16,7 @@ async function getSecretKey() {
   );
 }
 
+// buat token sesi bertanda tangan hmac, masa berlakunya 24 jam
 export async function createToken(payload) {
   const data = Object.assign({}, payload, {
     exp: Date.now() + 24 * 60 * 60 * 1000,
@@ -40,6 +41,7 @@ export async function createToken(payload) {
   return `${encodedPayload}.${signatureHex}`;
 }
 
+// verif keaslian, masa berlaku token lalu mengembalikan data sesi
 export async function verifyToken(token) {
   try {
     if (!token || !token.includes('.')) {

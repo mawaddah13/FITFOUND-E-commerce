@@ -17,6 +17,7 @@ if (!globalThis.pgPool) {
 
 pool = globalThis.pgPool;
 
+// jalankan kumpulan query dalam satu transaksi database spy aman kalau ada error
 export async function withTransaction(callback) {
   const client = await pool.connect();
   try {

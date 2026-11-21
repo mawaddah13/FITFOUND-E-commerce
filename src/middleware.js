@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/token';
 
 
+// halaman tujuan awal berdasarkan role akun user
 function homeForRole(role) {
   if (role === 'admin') {
     return '/admin/dashboard';
@@ -12,7 +13,7 @@ function homeForRole(role) {
   return '/';
 }
 
-
+// cek sesi login n mengatur hak akses rute halaman sesuai role user
 export async function middleware(request) {
   const pathname = request.nextUrl.pathname;
   const cookieItem = request.cookies.get('fitfound_session');

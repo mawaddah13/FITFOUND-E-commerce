@@ -1,3 +1,4 @@
+//ubah angka jd rupiah 
 export function formatRupiah(value) {
   let amount = 0;
   if (value) {
@@ -6,6 +7,7 @@ export function formatRupiah(value) {
   return 'Rp ' + amount.toLocaleString('id-ID');
 }
 
+// ubah data waktu jadi lebih mudah dibaca
 export function formatDate(value) {
   if (!value) {
     return '-';
