@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import LoginPrompt from '@/components/LoginPrompt';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
+import AdaptiveLayout from '@/components/AdaptiveLayout';
 
 export const metadata = {
   title: 'FITFOUND',
@@ -14,7 +15,7 @@ export const metadata = {
   },
 };
 
-// muat sesi, jumlah keranjang, kategori, bagian utama seluruh halaman
+// muat sesi, jumlah keranjang, kategori, serta bingkai utama seluruh halaman
 export default async function RootLayout({ children }) {
   const session = await getSession();
 
@@ -47,11 +48,16 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="bg-(--abumuda) text-neutral-900 antialiased" suppressHydrationWarning>
-        <Suspense fallback={null}>
-          <Navbar session={session} cartCount={cartCount} categories={categories} />
-        </Suspense>
-        {children}
-        <Footer />
+        <AdaptiveLayout
+          header={
+            <Suspense fallback={null}>
+              <Navbar session={session} cartCount={cartCount} categories={categories} />
+            </Suspense>
+          }
+          footer={<Footer />}
+        >
+          {children}
+        </AdaptiveLayout>
         <LoginPrompt />
       </body>
     </html>
