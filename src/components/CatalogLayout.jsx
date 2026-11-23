@@ -201,7 +201,7 @@ function SortDropdown({ basePath, filters, sortOptions }) {
       return sortOption.value === filters.sort;
     }) || sortOptions[0];
 
-  // pakai urutan yg dipilih lalu update url
+  // pakai urutan yg dipilih lalu tarik url baru
   function choose(sortValue) {
     setOpen(false);
     router.push(buildHref(basePath, filters, { sort: sortValue }), { scroll: false });
@@ -276,6 +276,7 @@ export default function CatalogLayout({
   sortOptions,
   title,
   resultCount,
+  showSort = true,
   headerAction = null,
   children,
 }) {
@@ -645,6 +646,13 @@ export default function CatalogLayout({
     headerActionElement = <div className="mt-1">{headerAction}</div>;
   }
 
+  let sortDropdownElement = null;
+  if (showSort) {
+    sortDropdownElement = (
+      <SortDropdown basePath={basePath} filters={filters} sortOptions={sortOptions} />
+    );
+  }
+
   let activeChipsBar = null;
   if (chips.length > 0) {
     activeChipsBar = (
@@ -744,9 +752,7 @@ export default function CatalogLayout({
           {headerActionElement}
         </div>
 
-        <div className="justify-self-end">
-          <SortDropdown basePath={basePath} filters={filters} sortOptions={sortOptions} />
-        </div>
+        <div className="justify-self-end">{sortDropdownElement}</div>
       </div>
 
       {activeChipsBar}
