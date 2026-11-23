@@ -15,7 +15,6 @@ export const CATEGORY_GROUPS = ['Main', 'Accessories'];
 
 export const FEATURED_MIN_SOLD = 200;
 export const FEATURED_MIN_RATING = 4.5;
-export const FEATURED_LIMIT = 6;
 
 // baca nilai parameter query url n rapikan spasi
 function readParam(params, paramKey) {
@@ -173,9 +172,8 @@ export async function getFeaturedProducts() {
     `${PRODUCT_CARD_SELECT}
      WHERE p.jumlah_terjual > $1
        AND r.avg_rating >= $2
-     ORDER BY RANDOM()
-     LIMIT $3`,
-    [FEATURED_MIN_SOLD, FEATURED_MIN_RATING, FEATURED_LIMIT]
+     ORDER BY RANDOM()`,
+    [FEATURED_MIN_SOLD, FEATURED_MIN_RATING]
   );
   return featuredResult.rows;
 }
