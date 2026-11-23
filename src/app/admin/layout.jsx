@@ -2,7 +2,7 @@ import pool from '@/lib/db';
 import { requireAdminPage } from '@/lib/auth';
 import DashboardShell from '@/components/DashboardShell';
 
-// cek sesi admin trs atur nav n jumlah antrean verifi penjual
+// cek sesi admin trs siapkan menu sidebar n jumlah seller pending
 export default async function AdminLayout({ children }) {
   const user = await requireAdminPage();
 
