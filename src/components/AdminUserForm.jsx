@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { FiLock } from 'react-icons/fi';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import { Field, inputClass } from '@/components/ui';
@@ -241,18 +240,17 @@ export default function AdminUserForm({ action, user, isSelf }) {
           />
         </Field>
 
-        <div>
-          <p className="block text-sm font-medium text-neutral-950 mb-1.5">Email</p>
-          <div className="flex items-center gap-2 px-4 py-3 text-sm rounded-xl border border-dashed border-neutral-300 bg-neutral-50 text-neutral-950">
-            <FiLock className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">{user.email}</span>
-          </div>
-          <p className="text-[11px] text-neutral-950 mt-1">
-            Email is this user’s sign-in ID, so only the owner can change it from their own profile. If an admin could
-            change it, the account (and its orders and saved addresses) could be handed to someone else without the
-            owner knowing.
-          </p>
-        </div>
+        <Field label="Email" htmlFor="email" hint="Used for signing in to FITFOUND.">
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            maxLength={150}
+            defaultValue={user.email}
+            className={inputClass}
+          />
+        </Field>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field label="Phone Number" htmlFor="no_hp" hint="Optional. 8–20 digits.">
