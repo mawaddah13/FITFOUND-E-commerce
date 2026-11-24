@@ -106,7 +106,8 @@ export default function DashboardShell({
     if (isActive(navLink.href)) {
       linkClass += 'bg-neutral-950 text-white font-medium shadow-sm';
     } else {
-      linkClass += 'text-neutral-950 hover:bg-white hover:shadow-sm lg:hover:pl-5';
+      // di HP tab menu diberi latar abu supaya kelihatan, di laptop transparan
+      linkClass += 'bg-(--abumuda) lg:bg-transparent text-neutral-950 hover:bg-(--abumuda) lg:hover:pl-5';
     }
 
     let badgeElement = null;
@@ -134,7 +135,7 @@ export default function DashboardShell({
   let titleBlock = null;
   if (title) {
     titleBlock = (
-      <div className="mb-4 lg:mb-6">
+      <div className="mb-4 lg:mb-6 px-1 lg:px-4 lg:pt-1">
         <p className="text-[11px] uppercase tracking-wider text-neutral-950">{subtitle}</p>
         <h1 className="text-lg font-semibold text-neutral-950 truncate">{title}</h1>
       </div>
@@ -146,10 +147,12 @@ export default function DashboardShell({
       {topBar}
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-10">
-        <aside className={`self-start ${asideStickyClass}`}>
+        <aside
+          className={`self-start bg-white rounded-2xl border border-neutral-200/80 shadow-sm p-3 lg:p-4 ${asideStickyClass}`}
+        >
           {titleBlock}
 
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {menuGroups.map(function buildMenuGroup(groupItem, groupIndex) {
               let groupKey = groupIndex;
               if (groupItem.title) {
@@ -177,7 +180,8 @@ export default function DashboardShell({
             })}
 
             <div className="shrink-0 lg:mt-4 lg:pt-4 lg:border-t lg:border-neutral-200">
-              <LogoutButton className="w-full text-left px-4 py-2.5 rounded-xl text-sm text-red-600 hover:bg-red-50 lg:hover:pl-5 transition-all duration-200 cursor-pointer whitespace-nowrap" />
+              {/* tombol logout berlatar merah supaya jelas */}
+              <LogoutButton className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-200 lg:hover:pl-5 transition-all duration-200 cursor-pointer whitespace-nowrap" />
             </div>
           </nav>
         </aside>

@@ -615,7 +615,7 @@ export default function CatalogLayout({
         {priceErrorElement}
       </FilterSection>
 
-      <div className="sticky bottom-0 bg-(--abumuda) pt-4 pb-2 flex gap-2">
+      <div className="sticky bottom-0 bg-white pt-4 pb-2 flex gap-2">
         <button
           type="submit"
           className="flex-1 py-2.5 text-sm font-medium bg-neutral-950 text-white rounded-xl hover:bg-neutral-800 transition cursor-pointer"
@@ -690,7 +690,7 @@ export default function CatalogLayout({
   let desktopSidebarElement = null;
   if (desktopOpen) {
     desktopSidebarElement = (
-      <aside className="hidden lg:block self-start sticky top-40 max-h-[calc(100vh-11rem)] overflow-y-auto pr-2 animate-slide-from-left">
+      <aside className="hidden lg:block self-start sticky top-40 max-h-[calc(100vh-11rem)] overflow-y-auto bg-white rounded-2xl border border-neutral-200/80 shadow-sm px-5 pb-3 animate-slide-from-left">
         {filterForm}
       </aside>
     );
@@ -704,7 +704,7 @@ export default function CatalogLayout({
           className="absolute inset-0 bg-black/40 animate-fade-in"
           onClick={handleCloseMobileDrawer}
         />
-        <div className="absolute left-0 top-0 bottom-0 w-[85%] max-w-sm bg-(--abumuda) shadow-xl flex flex-col animate-slide-in-left">
+        <div className="absolute left-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-xl flex flex-col animate-slide-in-left">
           <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200">
             <span className="inline-flex items-center gap-2.5 text-sm font-semibold">
               <FiSliders className="w-5 h-5" aria-hidden="true" />
