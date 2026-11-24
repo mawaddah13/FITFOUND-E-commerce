@@ -7,6 +7,34 @@ import SubmitButton from '@/components/SubmitButton';
 import { PageHeader, EmptyState, Notice } from '@/components/ui';
 import { formatRupiah } from '@/lib/format';
 
+// batas stok hampir habis (kuning) dihitung dari total stok produk, stok 0 = habis (merah)
+const LOW_STOCK_LIMIT = 5;
+
+// pilihan urutan produk di My Products
+const PRODUCT_SORTS = {
+  newest: { label: 'Newest', sql: 'p.created_at DESC' },
+  name_asc: { label: 'Name (A–Z)', sql: 'p.nama_produk ASC' },
+  price_asc: { label: 'Price: Low to High', sql: 'p.harga ASC' },
+  price_desc: { label: 'Price: High to Low', sql: 'p.harga DESC' },
+  stock_desc: { label: 'Most Stock', sql: 'p.stok DESC, p.nama_produk ASC' },
+  stock_asc: { label: 'Least Stock', sql: 'p.stok ASC, p.nama_produk ASC' },
+};
+
+// pilihan filter kondisi stok
+const STOCK_FILTERS = {
+  all: 'All products',
+  low: `Running low (1–${LOW_STOCK_LIMIT} left)`,
+  out: 'Sold out',
+};
+
+// baca parameter url sbg teks
+function readParam(params, paramKey) {
+  if (params && typeof params[paramKey] === 'string') {
+    return params[paramKey].trim();
+  }
+  return '';
+}
+
 // cek status simpan trs tampilkan daftar produk n stok perukuran milik toko
 export default async function SellerProductsPage({ searchParams }) {
   const { store } = await requireSellerPage();
@@ -15,6 +43,30 @@ export default async function SellerProductsPage({ searchParams }) {
   let savedStatus = '';
   if (resolvedSearchParams && typeof resolvedSearchParams.saved === 'string') {
     savedStatus = resolvedSearchParams.saved;
+  }
+
+  // filter n urutan dari url, contoh /seller/products?stock=low&sort=stock_asc
+  const keyword = readParam(resolvedSearchParams, 'q').slice(0, 100);
+  let stockFilter = readParam(resolvedSearchParams, 'stock');
+  if (!STOCK_FILTERS[stockFilter]) {
+    stockFilter = 'all';
+  }
+  let sortKey = readParam(resolvedSearchParams, 'sort');
+  if (!PRODUCT_SORTS[sortKey]) {
+    sortKey = 'newest';
+  }
+  const isFiltered = keyword !== '' || stockFilter !== 'all' || sortKey !== 'newest';
+
+  const queryValues = [store.id_store];
+  let filterSql = '';
+  if (keyword !== '') {
+    queryValues.push(`%${keyword}%`);
+    filterSql += ` AND p.nama_produk ILIKE $${queryValues.length}`;
+  }
+  if (stockFilter === 'low') {
+    filterSql += ` AND p.stok BETWEEN 1 AND ${LOW_STOCK_LIMIT}`;
+  } else if (stockFilter === 'out') {
+    filterSql += ' AND p.stok = 0';
   }
 
   const resProducts = await pool.query(
@@ -26,9 +78,9 @@ export default async function SellerProductsPage({ searchParams }) {
             ) AS sizes
      FROM products p
      JOIN categories c ON c.id_category = p.id_category
-     WHERE p.id_store = $1
-     ORDER BY p.created_at DESC`,
-    [store.id_store]
+     WHERE p.id_store = $1${filterSql}
+     ORDER BY ${PRODUCT_SORTS[sortKey].sql}`,
+    queryValues
   );
   const products = resProducts.rows;
 
@@ -49,7 +101,11 @@ export default async function SellerProductsPage({ searchParams }) {
   }
 
   let productTableContent = null;
-  if (products.length === 0) {
+  if (products.length === 0 && isFiltered) {
+    productTableContent = (
+      <EmptyState message="No products match this filter." actionHref="/seller/products" actionLabel="Reset Filter" />
+    );
+  } else if (products.length === 0) {
     productTableContent = (
       <EmptyState
         message="You have no products yet."
@@ -84,9 +140,26 @@ export default async function SellerProductsPage({ searchParams }) {
                   );
                 }
 
+                // indikator stok: merah = habis, kuning = hampir habis (5 atau kurang)
                 let totalStockClass = 'font-semibold';
+                let rowStockClass = '';
+                let stockBadge = null;
                 if (productItem.stok === 0) {
                   totalStockClass = 'text-red-600 font-semibold';
+                  rowStockClass = 'bg-red-50/70';
+                  stockBadge = (
+                    <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-red-100 text-red-700 whitespace-nowrap">
+                      Out of stock
+                    </span>
+                  );
+                } else if (productItem.stok <= LOW_STOCK_LIMIT) {
+                  totalStockClass = 'text-amber-700 font-semibold';
+                  rowStockClass = 'bg-amber-50/70';
+                  stockBadge = (
+                    <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800 whitespace-nowrap">
+                      Low stock
+                    </span>
+                  );
                 }
 
                 const productSizes = productItem.sizes;
@@ -97,7 +170,7 @@ export default async function SellerProductsPage({ searchParams }) {
                 const deleteConfirmText = `Delete "${productItem.nama_produk}"?`;
 
                 return (
-                  <tr key={productItem.id_product} className="align-middle">
+                  <tr key={productItem.id_product} className={`align-middle ${rowStockClass}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 min-w-[220px]">
                         <span className="w-11 h-14 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
@@ -105,7 +178,7 @@ export default async function SellerProductsPage({ searchParams }) {
                         </span>
                         <div>
                           <Link
-                            href={`/products/${productItem.id_product}`}
+                            href={`/seller/products/${productItem.id_product}/edit`}
                             className="font-medium hover:underline"
                           >
                             {productItem.nama_produk}
@@ -124,6 +197,7 @@ export default async function SellerProductsPage({ searchParams }) {
                     </td>
                     <td className="px-4 py-3">
                       <span className={totalStockClass}>{productItem.stok}</span>
+                      {stockBadge}
                       <div className="mt-1 flex flex-wrap gap-1 max-w-[220px]">
                         {productSizes.map(function buildSizeBadge(sizeEntry) {
                           let sizeBadgeClass =
@@ -173,7 +247,10 @@ export default async function SellerProductsPage({ searchParams }) {
     );
   }
 
-  const productCountDescription = `${products.length} product(s) in your store`;
+  let productCountDescription = `${products.length} product(s) in your store`;
+  if (isFiltered) {
+    productCountDescription = `${products.length} product(s) match your filter`;
+  }
 
   return (
     <div>
@@ -184,6 +261,80 @@ export default async function SellerProductsPage({ searchParams }) {
       />
 
       {savedNoticeElement}
+
+      <form
+        action="/seller/products"
+        method="GET"
+        className="mb-4 p-4 bg-white rounded-2xl border border-neutral-200/80 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_200px_200px_auto] gap-3 items-end"
+      >
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-950 mb-1">Search</span>
+          <input
+            name="q"
+            defaultValue={keyword}
+            placeholder="Product name"
+            className="w-full px-3 py-2.5 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-950 mb-1">Filter by stock</span>
+          <select
+            name="stock"
+            defaultValue={stockFilter}
+            className="w-full px-3 py-2.5 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900"
+          >
+            {Object.keys(STOCK_FILTERS).map(function buildStockOption(filterKey) {
+              return (
+                <option key={filterKey} value={filterKey}>
+                  {STOCK_FILTERS[filterKey]}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-950 mb-1">Sort by</span>
+          <select
+            name="sort"
+            defaultValue={sortKey}
+            className="w-full px-3 py-2.5 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900"
+          >
+            {Object.keys(PRODUCT_SORTS).map(function buildSortOption(optionKey) {
+              return (
+                <option key={optionKey} value={optionKey}>
+                  {PRODUCT_SORTS[optionKey].label}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="px-4 py-2.5 text-sm font-medium bg-neutral-950 text-white rounded-xl hover:bg-neutral-800 transition cursor-pointer"
+          >
+            Apply
+          </button>
+          <Link
+            href="/seller/products"
+            className="px-4 py-2.5 text-sm font-medium bg-white border border-neutral-300 text-neutral-950 rounded-xl hover:border-neutral-900 transition"
+          >
+            Reset Filter
+          </Link>
+        </div>
+      </form>
+
+      <div className="mb-4 flex flex-wrap items-center gap-4 text-[11px] text-neutral-950">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-amber-400" />
+          Low stock ({LOW_STOCK_LIMIT} or less in total)
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-red-500" />
+          Out of stock
+        </span>
+      </div>
+
       {productTableContent}
     </div>
   );
