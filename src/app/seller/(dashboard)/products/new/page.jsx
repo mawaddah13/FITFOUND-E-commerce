@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import pool from '@/lib/db';
-import { requireSellerPage } from '@/lib/auth';
+import { requireCompleteSellerPage } from '@/lib/sellerProfile';
 import { createProductAction } from '@/app/action/seller';
 import ProductForm from '@/components/ProductForm';
 import { PageHeader, Card } from '@/components/ui';
 
 // ambil daftar kategori trs tampilkan halaman tambah produk baru
 export default async function NewProductPage() {
-  await requireSellerPage();
+  await requireCompleteSellerPage();
 
   const resCategories = await pool.query(
     'SELECT id_category, nama_kategori, grup_kategori FROM categories ORDER BY grup_kategori DESC, nama_kategori ASC'

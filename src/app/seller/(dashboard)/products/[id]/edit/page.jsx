@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import pool from '@/lib/db';
-import { requireSellerPage } from '@/lib/auth';
+import { requireCompleteSellerPage } from '@/lib/sellerProfile';
 import { updateProductAction } from '@/app/action/seller';
 import ProductForm from '@/components/ProductForm';
 import { PageHeader, Card } from '@/components/ui';
 
 // cek sp punya produk trs ambil data produk, galeri, ukuran, n kategori utk halaman edit
 export default async function EditProductPage({ params }) {
-  const { store } = await requireSellerPage();
+  const { store } = await requireCompleteSellerPage();
   const resolvedParams = await params;
   const productId = Number(resolvedParams.id);
 

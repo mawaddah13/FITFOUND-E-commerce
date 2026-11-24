@@ -1,11 +1,12 @@
 import { requireSellerPage } from '@/lib/auth';
+import { isSellerProfileComplete } from '@/lib/sellerProfile';
 import { updateStoreAction } from '@/app/action/seller';
 import { updateProfileAction, changePasswordAction } from '@/app/action/buyer';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import ImageInput from '@/components/ImageInput';
 import PasswordInput from '@/components/PasswordInput';
-import { PageHeader, Card, Field, inputClass } from '@/components/ui';
+import { PageHeader, Card, Field, Notice, inputClass } from '@/components/ui';
 
 // ambil data toko aktif lalu tampilkan formulir profil toko n pratinjaunya
 export default async function StorePage() {
@@ -46,6 +47,17 @@ export default async function StorePage() {
     );
   }
 
+  // pengingat isi no hp n alamat dulu sebelum bisa tambah / edit produk
+  let completeProfileNotice = null;
+  if (!isSellerProfileComplete(user)) {
+    completeProfileNotice = (
+      <Notice type="info">
+        Please add your <strong>phone number</strong> and <strong>address</strong> in Account Information below
+        before you add or edit products.
+      </Notice>
+    );
+  }
+
   let previewDescriptionText = 'No description yet.';
   if (store.deskripsi_toko) {
     previewDescriptionText = store.deskripsi_toko;
@@ -57,6 +69,8 @@ export default async function StorePage() {
         title="Store Profile"
         description="Your store photo and name are shown to buyers on your store page and product pages."
       />
+
+      {completeProfileNotice}
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6 items-start">
         <Card>
