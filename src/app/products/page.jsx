@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getSession } from '@/lib/session';
 import ProductCard from '@/components/ProductCard';
 import CatalogLayout from '@/components/CatalogLayout';
-import { getWishlistIds, getHiddenStoreId } from '@/lib/products';
+import { getWishlistIds } from '@/lib/products';
 import {
   parseCatalogParams,
   getCategories,
@@ -22,8 +22,7 @@ export default async function ProductsPage({ searchParams }) {
 
   try {
     categories = await getCategories();
-    const hiddenStoreId = await getHiddenStoreId(session);
-    products = await queryCatalog(filters, { excludeStoreId: hiddenStoreId });
+    products = await queryCatalog(filters);
     wishlistIds = await getWishlistIds(session);
   } catch (error) {
     console.error('Failed to load all products:', error.message);
