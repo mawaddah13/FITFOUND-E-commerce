@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Hero from '@/components/Hero';
 import ProductCard from '@/components/ProductCard';
 import CatalogLayout from '@/components/CatalogLayout';
-import { getWishlistIds, getHiddenStoreId } from '@/lib/products';
+import { getWishlistIds } from '@/lib/products';
 import {
   parseCatalogParams,
   getCategories,
@@ -11,6 +11,7 @@ import {
   sortOptionsForClient,
 } from '@/lib/catalog';
 
+// batas jumlah produk yg tampil di Home, ubah angkanya di sini
 const NEW_ARRIVALS_LIMIT = 8;
 const RECOMMENDATION_LIMIT = 8;
 const FILTERED_LIMIT = 48;
@@ -26,11 +27,6 @@ export default async function HomePage({ searchParams }) {
     isFiltering = true;
   }
 
-  let showSortInHome = true;
-  if (!isFiltering && filters.segment === '') {
-    showSortInHome = false;
-  }
-
   let products = [];
   let recommended = [];
   let categories = [];
@@ -38,25 +34,19 @@ export default async function HomePage({ searchParams }) {
 
   try {
     categories = await getCategories();
-    const hiddenStoreId = await getHiddenStoreId(session);
     if (isFiltering) {
-      products = await queryCatalog(filters, {
-        limit: FILTERED_LIMIT,
-        excludeStoreId: hiddenStoreId,
-      });
+      products = await queryCatalog(filters, { limit: FILTERED_LIMIT });
     } else {
       // ambil maksimal 8 produk baru datang dan 8 rekomendasi acak yg stoknya tersedia
       products = await queryCatalog(filters, {
         inStockOnly: true,
         limit: NEW_ARRIVALS_LIMIT,
-        excludeStoreId: hiddenStoreId,
       });
 
       recommended = await queryCatalog(filters, {
         inStockOnly: true,
         random: true,
         limit: RECOMMENDATION_LIMIT,
-        excludeStoreId: hiddenStoreId,
       });
     }
     wishlistIds = await getWishlistIds(session);
@@ -187,7 +177,7 @@ export default async function HomePage({ searchParams }) {
           sortOptions={sortOptionsForClient()}
           title={sectionTitle}
           resultCount={products.length}
-          showSort={showSortInHome}
+          showSort={false}
           headerAction={headerActionLink}
         >
           {productGridContent}
