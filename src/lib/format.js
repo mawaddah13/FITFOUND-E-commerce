@@ -21,10 +21,34 @@ export function formatDate(value) {
   });
 }
 
+// cari tanggal terakhir sebuah status di riwayat pesanan (status pending pakai tanggal order kalau belum ada riwayat)
+export function getStatusDate(history, statusName, orderCreatedAt) {
+  let foundDate = null;
+  if (history) {
+    for (const historyItem of history) {
+      if (historyItem.status === statusName) {
+        foundDate = historyItem.tanggal;
+      }
+    }
+  }
+  if (!foundDate && statusName === 'pending') {
+    foundDate = orderCreatedAt;
+  }
+  return foundDate;
+}
+
 export const ORDER_STATUS = {
   pending: {
     label: 'Awaiting Payment',
     className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  waiting_verification: {
+    label: 'Awaiting Payment Verification',
+    className: 'bg-orange-50 text-orange-800 border-orange-200',
+  },
+  paid: {
+    label: 'Payment Confirmed',
+    className: 'bg-teal-50 text-teal-800 border-teal-200',
   },
   processing: {
     label: 'Processing',
@@ -44,8 +68,12 @@ export const ORDER_STATUS = {
   },
 };
 
+// alur status yg boleh diubah seller: pembayaran harus diverifikasi dulu sebelum diproses
+// waiting_verification -> pending = bukti pembayaran ditolak, buyer upload ulang
 export const SELLER_STATUS_FLOW = {
-  pending: ['processing', 'cancelled'],
+  pending: ['cancelled'],
+  waiting_verification: ['paid', 'pending', 'cancelled'],
+  paid: ['processing', 'cancelled'],
   processing: ['shipped', 'cancelled'],
   shipped: ['completed'],
   completed: [],

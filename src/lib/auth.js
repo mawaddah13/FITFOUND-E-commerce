@@ -37,7 +37,7 @@ export async function liftExpiredSuspensions() {
 // ambil data toko punya user brdsrkn id user
 export const getStoreByUserId = cache(async function getStoreByUserId(idUser) {
   const res = await pool.query(
-    `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, sembunyikan_produk, created_at
+    `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, created_at
      FROM stores
      WHERE id_user = $1`,
     [idUser]
@@ -55,6 +55,15 @@ export function isShopperRole(role) {
   } else {
     return false;
   }
+}
+
+// ambil data user kalau sedang login sebagai buyer (dipakai keranjang n checkout)
+export async function getBuyerUser() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== 'buyer') {
+    return null;
+  }
+  return user;
 }
 
 // ambil data user kalau sedang login n memiliki role buyer atau seller
@@ -104,6 +113,10 @@ export async function requireBuyerPage() {
   const user = await getCurrentUser();
   if (!user) {
     await redirectToLogin();
+  }
+  // seller tidak bisa belanja, jadi diarahkan ke dashboard seller
+  if (user.role === 'seller') {
+    redirect('/seller/dashboard');
   }
   if (!isShopperRole(user.role)) {
     redirect('/admin/dashboard');
