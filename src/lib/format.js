@@ -21,6 +21,15 @@ export function formatDate(value) {
   });
 }
 
+// tanggal tahapan dipisah 2 baris (tanggal, jam) supaya tidak sesak
+export function formatStepDate(value) {
+  const dateValue = new Date(value);
+  return {
+    day: dateValue.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    time: dateValue.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
 // cari tanggal terakhir sebuah status di riwayat pesanan (status pending pakai tanggal order kalau belum ada riwayat)
 export function getStatusDate(history, statusName, orderCreatedAt) {
   let foundDate = null;
@@ -39,16 +48,8 @@ export function getStatusDate(history, statusName, orderCreatedAt) {
 
 export const ORDER_STATUS = {
   pending: {
-    label: 'Awaiting Payment',
+    label: 'Pending',
     className: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  waiting_verification: {
-    label: 'Awaiting Payment Verification',
-    className: 'bg-orange-50 text-orange-800 border-orange-200',
-  },
-  paid: {
-    label: 'Payment Confirmed',
-    className: 'bg-teal-50 text-teal-800 border-teal-200',
   },
   processing: {
     label: 'Processing',
@@ -68,14 +69,13 @@ export const ORDER_STATUS = {
   },
 };
 
-// alur status yg boleh diubah seller: pembayaran harus diverifikasi dulu sebelum diproses
-// waiting_verification -> pending = bukti pembayaran ditolak, buyer upload ulang
+// alur status yg boleh diubah seller
+// pending -> processing = Confirm Payment, cuma bisa kalau buyer sudah tekan Pay Now
+// shipped -> completed bukan seller, tapi buyer yg konfirmasi paketnya sudah sampai
 export const SELLER_STATUS_FLOW = {
-  pending: ['cancelled'],
-  waiting_verification: ['paid', 'pending', 'cancelled'],
-  paid: ['processing', 'cancelled'],
+  pending: ['processing', 'cancelled'],
   processing: ['shipped', 'cancelled'],
-  shipped: ['completed'],
+  shipped: [],
   completed: [],
   cancelled: [],
 };

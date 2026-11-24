@@ -7,7 +7,10 @@ import { formatRupiah, formatDate } from '@/lib/format';
 // daftar tab status pesanan di halaman riwayat order buyer
 const TABS = {
   all: { label: 'All', statuses: null },
-  active: { label: 'In Progress', statuses: ['pending', 'processing', 'shipped'] },
+  active: {
+    label: 'In Progress',
+    statuses: ['pending', 'processing', 'shipped'],
+  },
   completed: { label: 'Completed', statuses: ['completed'] },
   cancelled: { label: 'Cancelled', statuses: ['cancelled'] },
 };
@@ -98,7 +101,7 @@ export default async function BuyerOrdersPage({ searchParams }) {
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-neutral-900">
+                  <span className="text-sm font-bold text-neutral-950">
                     Order #{orderItem.id_order}
                   </span>
                   <OrderStatusBadge status={orderItem.status_order} />
@@ -107,7 +110,7 @@ export default async function BuyerOrdersPage({ searchParams }) {
                   {orderItem.first_item}
                   {extraItemsText}
                 </p>
-                <p className="text-[11px] text-neutral-500 mt-0.5">
+                <p className="text-[11px] text-neutral-800 mt-0.5">
                   {orderItem.nama_toko} · {formatDate(orderItem.created_at)}
                 </p>
               </div>

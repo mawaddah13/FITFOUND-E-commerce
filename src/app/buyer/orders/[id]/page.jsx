@@ -2,18 +2,22 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import pool from '@/lib/db';
 import { requireBuyerPage } from '@/lib/auth';
-import { cancelOrderByBuyerAction, confirmReceivedAction } from '@/app/action/order';
+import {
+  cancelOrderByBuyerAction,
+  confirmReceivedAction,
+  markOrderPaidAction,
+} from '@/app/action/order';
 import { submitReviewAction } from '@/app/action/buyer';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import StarRatingInput from '@/components/StarRatingInput';
 import { Card, OrderStatusBadge, inputClass } from '@/components/ui';
-import { formatRupiah, formatDate } from '@/lib/format';
+import { formatRupiah, formatDate, formatStepDate, getStatusDate } from '@/lib/format';
 import { hasSize } from '@/lib/sizes';
 
 // daftar tahap status order buat tampilan tracking
 const TRACKING_STEPS = [
-  { key: 'pending', label: 'Awaiting Payment' },
+  { key: 'pending', label: 'Pending' },
   { key: 'processing', label: 'Processing' },
   { key: 'shipped', label: 'Shipped' },
   { key: 'completed', label: 'Completed' },
@@ -32,7 +36,8 @@ export default async function BuyerOrderDetailPage({ params }) {
 
   // pastikan order ada n memang milik user yg sedang login
   const resOrder = await pool.query(
-    `SELECT id_order, nama_toko, total_harga, status_order, alamat_pengiriman, catatan, created_at, updated_at
+    `SELECT id_order, nama_toko, total_harga, status_order, alamat_pengiriman, catatan, dibayar_pada,
+            created_at, updated_at
      FROM orders WHERE id_order = $1 AND id_user = $2`,
     [orderId, user.id_user]
   );
@@ -52,6 +57,15 @@ export default async function BuyerOrderDetailPage({ params }) {
     [orderId]
   );
   const items = resOrderItems.rows;
+
+  // ambil riwayat status buat tanggal di tiap tahapan
+  const resHistory = await pool.query(
+    `SELECT status_order AS status, created_at AS tanggal
+     FROM order_status_history WHERE id_order = $1
+     ORDER BY created_at ASC`,
+    [orderId]
+  );
+  const statusHistory = resHistory.rows;
 
   // cari posisi langkah status order saat ini di TRACKING_STEPS
   let currentStepIndex = -1;
@@ -92,7 +106,7 @@ export default async function BuyerOrderDetailPage({ params }) {
 
           // tahap yg sudah terlewati pakai warna biru n tanda centang
           let circleClass =
-            'relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-neutral-100 text-neutral-400 border-2 border-neutral-300';
+            'relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-neutral-100 text-neutral-700 border-2 border-neutral-300';
           let circleContent = stepIdx + 1;
           if (isStepDone) {
             circleClass =
@@ -100,9 +114,23 @@ export default async function BuyerOrderDetailPage({ params }) {
             circleContent = '✓';
           }
 
-          let stepLabelClass = 'mt-2 text-[11px] sm:text-xs text-neutral-400';
+          let stepLabelClass = 'mt-2 text-[11px] sm:text-xs text-neutral-700';
           if (isStepDone) {
             stepLabelClass = 'mt-2 text-[11px] sm:text-xs text-neutral-900 font-medium';
+          }
+
+          // tanggal tahap ini diperbarui
+          let stepDateElement = null;
+          const stepDate = getStatusDate(statusHistory, stepItem.key, order.created_at);
+          if (isStepDone && stepDate) {
+            const stepDateText = formatStepDate(stepDate);
+            stepDateElement = (
+              <span className="mt-1 text-[11px] leading-snug text-neutral-800">
+                {stepDateText.day}
+                <br />
+                {stepDateText.time}
+              </span>
+            );
           }
 
           return (
@@ -113,6 +141,7 @@ export default async function BuyerOrderDetailPage({ params }) {
               {stepConnector}
               <span className={circleClass}>{circleContent}</span>
               <span className={stepLabelClass}>{stepItem.label}</span>
+              {stepDateElement}
             </li>
           );
         })}
@@ -120,9 +149,9 @@ export default async function BuyerOrderDetailPage({ params }) {
     );
   }
 
-  // tombol batalkan order cuma muncul pas statusnya masih pending
+  // tombol batalkan order cuma muncul pas statusnya masih pending n belum dibayar
   let cancelOrderActionElement = null;
-  if (order.status_order === 'pending') {
+  if (order.status_order === 'pending' && !order.dibayar_pada) {
     const boundCancelAction = cancelOrderByBuyerAction.bind(null, order.id_order);
     cancelOrderActionElement = (
       <ActionForm
@@ -159,11 +188,45 @@ export default async function BuyerOrderDetailPage({ params }) {
     );
   }
 
+  // tombol bayar (tanpa foto bukti), setelah dibayar tinggal tunggu seller konfirmasi
+  let paymentSection = null;
+  if (order.status_order === 'pending' && !order.dibayar_pada) {
+    const boundPayAction = markOrderPaidAction.bind(null, order.id_order);
+    paymentSection = (
+      <ActionForm
+        action={boundPayAction}
+        confirmMessage={`Pay ${formatRupiah(order.total_harga)} for this order?`}
+        confirmDescription="The seller will confirm your payment, then the order goes to Processing."
+        confirmLabel="Pay Now"
+        cancelLabel="Not Yet"
+        confirmTone="neutral"
+        className="mt-6 p-4 rounded-xl bg-(--abumuda) flex flex-col sm:flex-row sm:items-center gap-3"
+      >
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-neutral-950">Waiting for payment</p>
+          <p className="text-xs text-neutral-800 mt-0.5">
+            Pay {formatRupiah(order.total_harga)} to {order.nama_toko} to continue this order.
+          </p>
+        </div>
+        <SubmitButton size="sm" variant="dark" pendingText="Paying..." className="px-6 py-2.5">
+          Pay Now
+        </SubmitButton>
+      </ActionForm>
+    );
+  } else if (order.status_order === 'pending') {
+    paymentSection = (
+      <div className="mt-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+        <p className="text-sm font-semibold text-emerald-800">Paid on {formatDate(order.dibayar_pada)}</p>
+        <p className="text-xs text-emerald-800 mt-0.5">Waiting for the seller to confirm your payment.</p>
+      </div>
+    );
+  }
+
   // kasih catatan kecil kalau order belum selesai maupun dibatalkan
   let reviewHintElement = null;
   if (!isCompleted && !isCancelled) {
     reviewHintElement = (
-      <p className="mt-3 text-[11px] text-neutral-400">
+      <p className="mt-3 text-[11px] text-neutral-700">
         You can rate and review products after the order status is “Completed”.
       </p>
     );
@@ -174,7 +237,7 @@ export default async function BuyerOrderDetailPage({ params }) {
   if (order.catatan) {
     noteSectionElement = (
       <>
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mt-5 mb-1">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-800 mt-5 mb-1">
           Note
         </h4>
         <p className="text-sm text-neutral-700">{order.catatan}</p>
@@ -185,16 +248,16 @@ export default async function BuyerOrderDetailPage({ params }) {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/buyer/orders" className="text-xs text-neutral-500 hover:text-neutral-900">
+        <Link href="/buyer/orders" className="text-xs text-neutral-800 hover:text-neutral-900">
           ← Back to orders
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h2 className="text-xl md:text-2xl font-semibold text-neutral-950">
+          <h2 className="text-xl md:text-2xl font-bold text-neutral-950">
             Order #{order.id_order}
           </h2>
           <OrderStatusBadge status={order.status_order} />
         </div>
-        <p className="text-sm text-neutral-500 mt-1">
+        <p className="text-sm text-neutral-800 mt-1">
           {order.nama_toko} · Ordered {formatDate(order.created_at)}
         </p>
       </div>
@@ -202,6 +265,7 @@ export default async function BuyerOrderDetailPage({ params }) {
       <Card>
         <h3 className="text-base font-semibold mb-5">Order Tracking</h3>
         {trackingContent}
+        {paymentSection}
 
         <div className="mt-6 flex flex-wrap gap-3">
           {cancelOrderActionElement}
@@ -235,7 +299,7 @@ export default async function BuyerOrderDetailPage({ params }) {
                       <span className="text-neutral-300">{emptyStars}</span>
                       <span className="ml-2 text-[11px] text-neutral-950">Your review</span>
                     </p>
-                    <p className="text-xs text-neutral-600 mt-1">{orderItem.komentar}</p>
+                    <p className="text-xs text-neutral-900 mt-1">{orderItem.komentar}</p>
                   </div>
                 );
               } else if (canReview) {
@@ -322,7 +386,7 @@ export default async function BuyerOrderDetailPage({ params }) {
                     </span>
                     <div className="flex-1 min-w-0">
                       {itemTitleElement}
-                      <p className="text-xs text-neutral-500 mt-0.5">
+                      <p className="text-xs text-neutral-800 mt-0.5">
                         {sizePrefixText}
                         {orderItem.jumlah} × {formatRupiah(orderItem.harga_satuan)}
                       </p>

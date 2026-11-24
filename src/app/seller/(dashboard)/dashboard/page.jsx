@@ -10,12 +10,14 @@ export default async function SellerDashboardPage() {
 
   const resStats = await pool.query(
     `SELECT
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'pending')::int AS awaiting_payment,
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'waiting_verification')::int AS to_verify,
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order IN ('paid', 'processing'))::int AS to_process,
+       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'pending' AND dibayar_pada IS NULL)::int AS awaiting_payment,
+       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'pending' AND dibayar_pada IS NOT NULL)::int AS to_verify,
+       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'processing')::int AS to_process,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'shipped')::int AS shipped,
        (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok = 0)::int AS sold_out,
-       (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok BETWEEN 1 AND 5)::int AS low_stock,
+       (SELECT COUNT(*) FROM products p WHERE p.id_store = $1 AND p.stok > 0 AND (p.stok <= 5 OR EXISTS (
+          SELECT 1 FROM product_sizes ps WHERE ps.id_product = p.id_product AND ps.stok <= 5
+        )))::int AS low_stock,
        (SELECT COUNT(*) FROM products WHERE id_store = $1)::int AS total_products,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'completed')::int AS completed_orders,
        (SELECT COALESCE(SUM(total_harga), 0) FROM orders WHERE id_store = $1 AND status_order = 'completed') AS revenue`,
@@ -34,12 +36,19 @@ export default async function SellerDashboardPage() {
   );
   const recentOrders = resRecentOrders.rows;
 
-  // ambil produk yg stoknya hampir habis (sisa 1-5) buat info di overview
+  // ambil produk yg sudah habis n yg hampir habis (total atau salah satu ukurannya sisa 5 ke bawah)
+  // low_sizes = daftar ukuran yg stoknya 5 ke bawah, contoh "40: 3, 41: 4"
   const resLowStock = await pool.query(
-    `SELECT id_product, nama_produk, stok, gambar
-     FROM products
-     WHERE id_store = $1 AND stok BETWEEN 1 AND 5
-     ORDER BY stok ASC, nama_produk ASC
+    `SELECT p.id_product, p.nama_produk, p.stok, p.gambar,
+            (SELECT STRING_AGG(ps.ukuran || ': ' || ps.stok, ', ' ORDER BY ps.urutan)
+             FROM product_sizes ps
+             WHERE ps.id_product = p.id_product AND ps.stok <= 5 AND ps.ukuran <> '-') AS low_sizes
+     FROM products p
+     WHERE p.id_store = $1
+       AND (p.stok <= 5 OR EXISTS (
+         SELECT 1 FROM product_sizes ps WHERE ps.id_product = p.id_product AND ps.stok <= 5
+       ))
+     ORDER BY p.stok ASC, p.nama_produk ASC
      LIMIT 5`,
     [store.id_store]
   );
@@ -47,19 +56,19 @@ export default async function SellerDashboardPage() {
 
   const todoItems = [
     {
-      label: 'Awaiting Payment',
+      label: 'Not Paid Yet',
       value: stats.awaiting_payment,
       href: '/seller/orders?status=pending',
     },
     {
-      label: 'Verify Payment',
+      label: 'Confirm Payment',
       value: stats.to_verify,
-      href: '/seller/orders?status=waiting_verification',
+      href: '/seller/orders?status=to_confirm',
     },
     {
       label: 'To Process',
       value: stats.to_process,
-      href: '/seller/orders?status=paid',
+      href: '/seller/orders?status=processing',
     },
     {
       label: 'Shipped',
@@ -67,14 +76,16 @@ export default async function SellerDashboardPage() {
       href: '/seller/orders?status=shipped',
     },
     {
-      label: 'Low Stock (5 or less)',
+      label: 'Low Stock',
       value: stats.low_stock,
       href: '/seller/products?stock=low',
+      activeClass: 'text-amber-500',
     },
     {
       label: 'Sold Out Products',
       value: stats.sold_out,
       href: '/seller/products?stock=out',
+      activeClass: 'text-red-600',
     },
   ];
 
@@ -123,6 +134,17 @@ export default async function SellerDashboardPage() {
     lowStockContent = (
       <div className="divide-y divide-neutral-100">
         {lowStockProducts.map(function buildLowStockRow(productItem) {
+          // habis = merah, hampir habis = kuning
+          let stockBadgeClass = 'bg-amber-100 text-amber-800';
+          let stockBadgeText = `${productItem.stok} left`;
+          if (productItem.low_sizes) {
+            stockBadgeText = `Size ${productItem.low_sizes}`;
+          }
+          if (productItem.stok === 0) {
+            stockBadgeClass = 'bg-red-100 text-red-700';
+            stockBadgeText = 'Sold out';
+          }
+
           return (
             <Link
               key={productItem.id_product}
@@ -130,8 +152,8 @@ export default async function SellerDashboardPage() {
               className="py-3 px-2 -mx-2 rounded-xl flex items-center justify-between gap-3 hover:bg-neutral-50 transition-colors duration-200"
             >
               <span className="text-sm font-medium text-neutral-950 truncate">{productItem.nama_produk}</span>
-              <span className="shrink-0 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-amber-100 text-amber-800">
-                {productItem.stok} left
+              <span className={`shrink-0 px-2 py-0.5 text-[11px] font-semibold rounded-full ${stockBadgeClass}`}>
+                {stockBadgeText}
               </span>
             </Link>
           );
@@ -156,7 +178,10 @@ export default async function SellerDashboardPage() {
         <div className="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 md:divide-x divide-neutral-200">
           {todoItems.map(function buildTodoItem(todoEntry) {
             let todoCountClass = 'text-2xl font-bold text-neutral-300';
-            if (todoEntry.value > 0) {
+            // stok menipis kuning, stok habis merah, sisanya biru
+            if (todoEntry.value > 0 && todoEntry.activeClass) {
+              todoCountClass = `text-2xl font-bold ${todoEntry.activeClass}`;
+            } else if (todoEntry.value > 0) {
               todoCountClass = 'text-2xl font-bold text-(--biru)';
             }
 
@@ -197,10 +222,12 @@ export default async function SellerDashboardPage() {
       <Card>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="text-base font-semibold">Low Stock Products</h3>
-            <p className="text-xs text-neutral-950 mt-0.5">Products with 5 items or less left</p>
+            <h3 className="text-base font-semibold">Low &amp; Sold Out Products</h3>
+            <p className="text-xs text-neutral-950 mt-0.5">
+              Products with a size that has 5 items or fewer left, including products that are already sold out.
+            </p>
           </div>
-          <Link href="/seller/products?stock=low" className="text-xs underline text-neutral-950">
+          <Link href="/seller/products?sort=stock_asc" className="text-xs underline text-neutral-950">
             View all
           </Link>
         </div>

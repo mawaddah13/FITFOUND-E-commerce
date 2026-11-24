@@ -3,12 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import pool, { withTransaction } from '@/lib/db';
-import { getBuyerUser, getActiveSeller, getUserWithRole } from '@/lib/auth';
+import { getBuyerUser, getActiveSeller } from '@/lib/auth';
 import { getString, toPositiveInt, isValidPhone } from '@/lib/validation';
 import { SELLER_STATUS_FLOW, ORDER_STATUS } from '@/lib/format';
 import { sizeSuffix } from '@/lib/sizes';
 import { activeAccountSql } from '@/lib/products';
-import { hasUploadedFile, validateImageFile, saveImageFile, deleteUploadedImage } from '@/lib/upload';
 
 class CheckoutError extends Error {}
 
@@ -394,7 +393,7 @@ export async function cancelOrderByBuyerAction(rawOrderId, prevState, formData) 
   try {
     await withTransaction(async function runCancelOrder(dbClient) {
       const orderResult = await dbClient.query(
-        'SELECT status_order FROM orders WHERE id_order = $1 AND id_user = $2 FOR UPDATE',
+        'SELECT status_order, dibayar_pada FROM orders WHERE id_order = $1 AND id_user = $2 FOR UPDATE',
         [orderId, user.id_user]
       );
 
@@ -402,8 +401,9 @@ export async function cancelOrderByBuyerAction(rawOrderId, prevState, formData) 
         throw new CheckoutError('Order not found.');
       }
 
-      if (orderResult.rows[0].status_order !== 'pending') {
-        throw new CheckoutError('Only orders awaiting payment can be cancelled.');
+      // kalau buyer sudah tekan I've Paid, yg bisa batalkan tinggal seller
+      if (orderResult.rows[0].status_order !== 'pending' || orderResult.rows[0].dibayar_pada) {
+        throw new CheckoutError('Only unpaid orders can be cancelled.');
       }
 
       await restoreStock(dbClient, orderId);
@@ -425,56 +425,30 @@ export async function cancelOrderByBuyerAction(rawOrderId, prevState, formData) 
   return { success: 'Order has been cancelled.' };
 }
 
-// buyer kirim foto bukti pembayaran, status jadi menunggu verifikasi pembayaran oleh seller
-export async function uploadPaymentProofAction(rawOrderId, prevState, formData) {
+// buyer tekan tombol I've Paid, pesanan tetap Pending tp seller bisa konfirmasi pembayarannya
+export async function markOrderPaidAction(rawOrderId, prevState, formData) {
   const orderId = toPositiveInt(rawOrderId);
   const user = await getBuyerUser();
   if (!user || !orderId) {
     return { error: 'You are not allowed to perform this action.' };
   }
 
-  const proofFile = formData.get('bukti_file');
-  if (!hasUploadedFile(proofFile)) {
-    return { error: 'Please choose a photo of your payment proof.' };
-  }
-
-  const fileError = validateImageFile(proofFile);
-  if (fileError) {
-    return { error: fileError };
-  }
-
-  const orderResult = await pool.query(
-    'SELECT status_order, bukti_pembayaran FROM orders WHERE id_order = $1 AND id_user = $2',
+  const updateResult = await pool.query(
+    `UPDATE orders SET updated_at = CURRENT_TIMESTAMP, dibayar_pada = CURRENT_TIMESTAMP
+     WHERE id_order = $1 AND id_user = $2 AND status_order = 'pending' AND dibayar_pada IS NULL
+     RETURNING id_order`,
     [orderId, user.id_user]
   );
-  if (orderResult.rows.length === 0) {
-    return { error: 'Order not found.' };
-  }
-  if (orderResult.rows[0].status_order !== 'pending') {
-    return { error: 'Payment proof can only be sent while the order is awaiting payment.' };
-  }
 
-  const oldProof = orderResult.rows[0].bukti_pembayaran;
-  const proofPath = await saveImageFile(proofFile, 'payments', `payment-order-${orderId}`);
-
-  await withTransaction(async function savePaymentProof(dbClient) {
-    await dbClient.query(
-      `UPDATE orders
-       SET updated_at = CURRENT_TIMESTAMP, bukti_pembayaran = $1, status_order = 'waiting_verification'
-       WHERE id_order = $2`,
-      [proofPath, orderId]
-    );
-    await addStatusHistory(dbClient, orderId, 'waiting_verification');
-  });
-
-  if (oldProof && oldProof !== proofPath) {
-    await deleteUploadedImage(oldProof);
+  if (updateResult.rowCount === 0) {
+    return { error: 'This order cannot be paid anymore.' };
   }
 
   revalidatePath('/buyer/orders');
   revalidatePath(`/buyer/orders/${orderId}`);
   revalidatePath('/seller/orders');
-  return { success: 'Payment proof sent. Please wait for the seller to verify your payment.' };
+  revalidatePath('/seller/dashboard');
+  return { success: 'Payment sent. Please wait for the seller to confirm your payment.' };
 }
 
 // konfirmasi pesanan terkirim menjadi selesai n perbarui jumlah terjual
@@ -510,8 +484,14 @@ export async function confirmReceivedAction(rawOrderId, prevState, formData) {
   return { success: 'Order completed. You can now review the products.' };
 }
 
-// cek transisi status n simpan status pesanan baru (storeId null = toko mana pun, khusus admin)
-async function changeOrderStatus(orderId, storeId, formData) {
+// cek transisi status trs perbarui status pesanan milik toko penjual
+export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
+  const orderId = toPositiveInt(rawOrderId);
+  const seller = await getActiveSeller();
+  if (!seller || !orderId) {
+    return { error: 'You are not allowed to perform this action.' };
+  }
+
   const nextStatus = getString(formData, 'status_order');
   if (!ORDER_STATUS[nextStatus]) {
     return { error: 'Please choose a valid status.' };
@@ -520,17 +500,12 @@ async function changeOrderStatus(orderId, storeId, formData) {
   try {
     await withTransaction(async function runUpdateOrderStatus(dbClient) {
       const orderResult = await dbClient.query(
-        `SELECT status_order FROM orders
-         WHERE id_order = $1 AND ($2::int IS NULL OR id_store = $2::int)
-         FOR UPDATE`,
-        [orderId, storeId]
+        'SELECT status_order, dibayar_pada FROM orders WHERE id_order = $1 AND id_store = $2 FOR UPDATE',
+        [orderId, seller.store.id_store]
       );
 
       if (orderResult.rows.length === 0) {
-        if (storeId) {
-          throw new CheckoutError('Order not found in your store.');
-        }
-        throw new CheckoutError('Order not found.');
+        throw new CheckoutError('Order not found in your store.');
       }
 
       const currentStatus = orderResult.rows[0].status_order;
@@ -543,6 +518,11 @@ async function changeOrderStatus(orderId, storeId, formData) {
         throw new CheckoutError(
           `Cannot change status from "${ORDER_STATUS[currentStatus].label}" to "${ORDER_STATUS[nextStatus].label}".`
         );
+      }
+
+      // pembayaran baru bisa dikonfirmasi (masuk Processing) kalau buyer sudah tekan I've Paid
+      if (currentStatus === 'pending' && nextStatus === 'processing' && !orderResult.rows[0].dibayar_pada) {
+        throw new CheckoutError('The buyer has not paid this order yet.');
       }
 
       if (nextStatus === 'cancelled') {
@@ -566,39 +546,9 @@ async function changeOrderStatus(orderId, storeId, formData) {
     throw error;
   }
 
+  revalidatePath('/seller/orders');
+  revalidatePath('/seller/dashboard');
   return { success: `Order #${orderId} updated to "${ORDER_STATUS[nextStatus].label}".` };
-}
-
-// cek transisi status trs perbarui status pesanan milik toko penjual
-export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
-  const orderId = toPositiveInt(rawOrderId);
-  const seller = await getActiveSeller();
-  if (!seller || !orderId) {
-    return { error: 'You are not allowed to perform this action.' };
-  }
-
-  const result = await changeOrderStatus(orderId, seller.store.id_store, formData);
-
-  revalidatePath('/seller/orders');
-  revalidatePath('/seller/dashboard');
-  revalidatePath('/admin/orders');
-  return result;
-}
-
-// admin bisa memperbarui status pesanan dari toko mana pun
-export async function adminUpdateOrderStatusAction(rawOrderId, prevState, formData) {
-  const orderId = toPositiveInt(rawOrderId);
-  const admin = await getUserWithRole('admin');
-  if (!admin || !orderId) {
-    return { error: 'Only Admin can do this. Please sign in again.' };
-  }
-
-  const result = await changeOrderStatus(orderId, null, formData);
-
-  revalidatePath('/admin/orders');
-  revalidatePath('/seller/orders');
-  revalidatePath('/seller/dashboard');
-  return result;
 }
 
 // catat tanggal setiap perubahan status pesanan (dipakai buat tanggal di tiap tahapan)
