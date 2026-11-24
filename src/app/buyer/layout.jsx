@@ -23,18 +23,7 @@ export default async function BuyerLayout({ children }) {
     { href: '/buyer/addresses', label: 'Addresses' },
   ];
 
-  let accountSubtitle = 'Buyer Account';
-  if (user.role === 'buyer') {
-    navLinks.push({ href: '/buyer/become-seller', label: 'Become a Seller' });
-  } else if (user.role === 'seller' && user.status === 'active') {
-    accountSubtitle = 'Shopping as Seller';
-    navLinks.push({ href: '/seller/dashboard', label: 'Seller Center →' });
-  } else if (user.role === 'seller' && user.status === 'pending') {
-    accountSubtitle = 'Buyer Account · Seller Pending';
-    navLinks.push({ href: '/seller/pending', label: 'Seller Application (Pending)' });
-  } else if (user.role === 'seller' && user.status === 'rejected') {
-    navLinks.push({ href: '/seller/pending', label: 'Seller Application (Rejected)' });
-  }
+  const accountSubtitle = 'Buyer Account';
 
   return (
     <DashboardShell title={user.nama} subtitle={accountSubtitle} links={navLinks}>

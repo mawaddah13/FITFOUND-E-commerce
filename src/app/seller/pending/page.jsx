@@ -1,8 +1,6 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser, getStoreByUserId } from '@/lib/auth';
 import { deleteRejectedAccountAction } from '@/app/action/auth';
-import { cancelSellerApplicationAction } from '@/app/action/account';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import LogoutButton from '@/components/LogoutButton';
@@ -45,7 +43,7 @@ export default async function PendingSellerPage() {
         <h1 className="mt-5 text-2xl font-semibold text-neutral-950">Registration Rejected</h1>
         <p className="mt-2 text-sm text-neutral-600">
           Sorry, your Seller registration{storeLabelForRejected} has been rejected by the Admin.
-          You can delete this account, or cancel the application and keep using your account for shopping.
+          You can delete this account.
         </p>
         <ActionForm
           action={deleteRejectedAccountAction}
@@ -68,7 +66,7 @@ export default async function PendingSellerPage() {
         </h1>
         <p className="mt-2 text-sm text-neutral-600">
           Thank you for registering as a Seller{storeLabelForPending}. The Admin will verify
-          your account soon. Meanwhile, you can keep shopping.
+          your account soon. Please check again later.
         </p>
       </>
     );
@@ -76,7 +74,7 @@ export default async function PendingSellerPage() {
 
   return (
     <div className="min-h-screen bg-(--abumuda) flex flex-col items-center justify-center gap-8 p-6">
-      <Logo href="/" />
+      <Logo href="/seller/pending" />
 
       <div className="w-full max-w-md bg-white rounded-3xl border border-neutral-100 shadow-sm p-8 md:p-10 text-center animate-pop-in">
         <div
@@ -86,26 +84,6 @@ export default async function PendingSellerPage() {
         </div>
 
         {statusSectionContent}
-
-        <Link
-          href="/"
-          className="mt-4 block w-full py-3 text-sm font-semibold text-white bg-neutral-950 rounded-xl hover:bg-neutral-800 hover:-translate-y-0.5 transition-all duration-200"
-        >
-          Continue Shopping
-        </Link>
-
-        <ActionForm
-          action={cancelSellerApplicationAction}
-          confirmMessage="Cancel your seller application?"
-          confirmDescription="Your store application will be removed and your account becomes a regular Buyer account."
-          confirmLabel="Cancel Application"
-          cancelLabel="Keep Application"
-          className="mt-3"
-        >
-          <SubmitButton variant="outline" pendingText="Cancelling..." className="w-full">
-            Cancel Seller Application
-          </SubmitButton>
-        </ActionForm>
 
         <div className="mt-5">
           <LogoutButton className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-4 cursor-pointer" />
