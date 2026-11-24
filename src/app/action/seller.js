@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import pool, { withTransaction } from '@/lib/db';
-import { getActiveSeller } from '@/lib/auth';
+import { getActiveSeller, getUserWithRole } from '@/lib/auth';
 import { isSegmentAllowed, restrictionMessage } from '@/lib/segments';
 import {
   normalizeSizeLabel,
@@ -34,7 +34,6 @@ export async function updateStoreAction(prevState, formData) {
 
   const storeName = getString(formData, 'nama_toko');
   const storeDescription = getString(formData, 'deskripsi_toko');
-  const hideOwnProducts = formData.get('sembunyikan_produk') === 'on';
 
   if (storeName === '') {
     return { error: 'Store name is required.' };
@@ -54,6 +53,7 @@ export async function updateStoreAction(prevState, formData) {
     required: false,
     currentValue: seller.store.gambar_toko,
     folder: 'stores',
+    baseName: storeName,
   });
   if (storeImage.error) {
     return { error: storeImage.error };
@@ -65,8 +65,8 @@ export async function updateStoreAction(prevState, formData) {
   }
 
   await pool.query(
-    'UPDATE stores SET updated_at = CURRENT_TIMESTAMP, nama_toko = $1, deskripsi_toko = $2, gambar_toko = $3, sembunyikan_produk = $4 WHERE id_store = $5',
-    [storeName, descriptionValue, storeImage.value, hideOwnProducts, seller.store.id_store]
+    'UPDATE stores SET updated_at = CURRENT_TIMESTAMP, nama_toko = $1, deskripsi_toko = $2, gambar_toko = $3 WHERE id_store = $4',
+    [storeName, descriptionValue, storeImage.value, seller.store.id_store]
   );
 
   if (storeImage.value !== seller.store.gambar_toko) {
@@ -330,7 +330,7 @@ export async function createProductAction(prevState, formData) {
     return { error: fileValidationError };
   }
 
-  const savedImagePaths = await saveImageFiles(uploadedFiles, 'products');
+  const savedImagePaths = await saveImageFiles(uploadedFiles, 'products', formResult.data.nama);
   const productPayload = formResult.data;
 
   await withTransaction(async function insertNewProduct(dbClient) {
@@ -360,17 +360,11 @@ export async function createProductAction(prevState, formData) {
   redirect('/seller/products?saved=created');
 }
 
-// cek kepemilikan, data, n foto lalu perbarui produk milik toko penjual
-export async function updateProductAction(rawProductId, prevState, formData) {
-  const productId = toPositiveInt(rawProductId);
-  const seller = await getActiveSeller();
-  if (!seller || !productId) {
-    return NOT_ALLOWED;
-  }
-
+// cek data n foto lalu simpan perubahan produk milik toko tertentu (dipakai seller n admin)
+async function saveProductChanges(productId, storeId, formData) {
   const ownerCheck = await pool.query(
     'SELECT gambar FROM products WHERE id_product = $1 AND id_store = $2',
-    [productId, seller.store.id_store]
+    [productId, storeId]
   );
   if (ownerCheck.rows.length === 0) {
     return { error: 'Product not found in your store.' };
@@ -408,7 +402,7 @@ export async function updateProductAction(rawProductId, prevState, formData) {
     return { error: fileValidationError };
   }
 
-  const newImagePaths = await saveImageFiles(newFiles, 'products');
+  const newImagePaths = await saveImageFiles(newFiles, 'products', formResult.data.nama);
   const finalImages = [...keptImages, ...newImagePaths];
   const removedImages = currentImages.filter(function filterRemovedImage(existingPath) {
     return !keptImages.includes(existingPath);
@@ -430,7 +424,7 @@ export async function updateProductAction(rawProductId, prevState, formData) {
         productPayload.stok,
         productPayload.ukuran,
         productId,
-        seller.store.id_store,
+        storeId,
       ]
     );
     await saveProductSizes(dbClient, productId, productPayload.sizes);
@@ -441,10 +435,51 @@ export async function updateProductAction(rawProductId, prevState, formData) {
     await deleteUploadedImage(removedPath);
   }
 
+  return null;
+}
+
+// cek kepemilikan, data, n foto lalu perbarui produk milik toko penjual
+export async function updateProductAction(rawProductId, prevState, formData) {
+  const productId = toPositiveInt(rawProductId);
+  const seller = await getActiveSeller();
+  if (!seller || !productId) {
+    return NOT_ALLOWED;
+  }
+
+  const saveError = await saveProductChanges(productId, seller.store.id_store, formData);
+  if (saveError) {
+    return saveError;
+  }
+
   revalidatePath('/seller/products');
   revalidatePath(`/products/${productId}`);
   revalidatePath('/products');
   redirect('/seller/products?saved=updated');
+}
+
+// admin bisa mengedit produk dari toko mana pun
+export async function adminUpdateProductAction(rawProductId, prevState, formData) {
+  const productId = toPositiveInt(rawProductId);
+  const admin = await getUserWithRole('admin');
+  if (!admin || !productId) {
+    return { error: 'Only Admin can do this. Please sign in again.' };
+  }
+
+  const productResult = await pool.query('SELECT id_store FROM products WHERE id_product = $1', [productId]);
+  if (productResult.rows.length === 0) {
+    return { error: 'Product not found.' };
+  }
+
+  const saveError = await saveProductChanges(productId, productResult.rows[0].id_store, formData);
+  if (saveError) {
+    return saveError;
+  }
+
+  revalidatePath('/admin/products');
+  revalidatePath('/seller/products');
+  revalidatePath(`/products/${productId}`);
+  revalidatePath('/products');
+  redirect('/admin/products?saved=updated');
 }
 
 // pastikan produkny milik si toko ini trs hapus produk beserta file foto milik toko penjual

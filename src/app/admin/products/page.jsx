@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import pool from '@/lib/db';
 import { requireAdminPage } from '@/lib/auth';
 import { adminDeleteProductAction } from '@/app/action/admin';
@@ -90,7 +91,13 @@ export default async function AdminProductsPage({ searchParams }) {
           </td>
           <td className="px-4 py-3">{productItem.stok}</td>
           <td className="px-4 py-3">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Link
+                href={`/admin/products/${productItem.id_product}/edit`}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-neutral-300 text-neutral-950 hover:border-neutral-900 transition"
+              >
+                Edit
+              </Link>
               <ActionForm
                 action={boundDeleteAction}
                 confirmMessage={removeConfirmText}
@@ -107,13 +114,24 @@ export default async function AdminProductsPage({ searchParams }) {
     });
   }
 
+  let savedBanner = null;
+  if (resolvedSearchParams && resolvedSearchParams.saved === 'updated') {
+    savedBanner = (
+      <p className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+        Product updated.
+      </p>
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Product Moderation"
-        description="Remove products that violate platform rules, from any seller."
+        description="Edit or remove products from any seller, for example products that break platform rules."
         action={searchActionElement}
       />
+
+      {savedBanner}
 
       <div className="bg-white rounded-2xl border border-neutral-200/80 overflow-hidden">
         <div className="overflow-x-auto">
