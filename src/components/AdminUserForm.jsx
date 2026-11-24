@@ -489,7 +489,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
             Reset Password
           </h3>
           <p className="text-[11px] text-neutral-950 mt-1.5">
-            For users who forgot their password. Leave empty to keep the current one
+            For users who forgot their password. Leave empty to keep the current one.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
