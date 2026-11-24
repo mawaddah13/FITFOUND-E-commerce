@@ -7,6 +7,7 @@
   --biru: #4353FF;
   --biruhover: #3544E8;
   --birumuda: #EEF0FF;
+  --abutua: #eaeaea;
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -98,8 +99,10 @@ html {
   }
 }
 
+/* backwards (bukan both): setelah animasi selesai transform-nya dilepas,
+   supaya elemen position: fixed (kartu ringkasan mengambang) tetap menempel di layar saat discroll */
 .animate-page-in {
-  animation: page-in 0.45s var(--ease-smooth) both;
+  animation: page-in 0.45s var(--ease-smooth) backwards;
 }
 
 .animate-fade-in {

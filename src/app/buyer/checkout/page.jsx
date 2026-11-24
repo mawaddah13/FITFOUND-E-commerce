@@ -203,10 +203,10 @@ export default async function OrderConfirmationPage({ searchParams }) {
   }
 
   return (
-    <div className="pb-28">
+    <div className="pb-52 lg:pb-0">
       <PageHeader title="Order Confirmation" description={pageDescription} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
         <div className="space-y-4">
           {warningElement}
 
@@ -272,7 +272,7 @@ export default async function OrderConfirmationPage({ searchParams }) {
           </Link>
         </div>
 
-        <Card className="xl:sticky xl:top-40">
+        <Card className="lg:sticky lg:top-28">
           <h3 className="text-base font-semibold mb-4">Order Summary</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-neutral-950">
@@ -300,6 +300,7 @@ export default async function OrderConfirmationPage({ searchParams }) {
             buyNow={buyNow}
             totalText={formatRupiah(totalPrice)}
             itemCount={totalQty}
+            storeCount={storeGroups.length}
             disabled={warnings.length > 0}
           />
         </Card>

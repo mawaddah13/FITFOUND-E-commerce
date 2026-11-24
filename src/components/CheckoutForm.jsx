@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { FiShoppingBag, FiArrowRight } from 'react-icons/fi';
 import { checkoutAction } from '@/app/action/order';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
@@ -20,6 +21,7 @@ export default function CheckoutForm({
   buyNow = null,
   totalText = '',
   itemCount = 0,
+  storeCount = 1,
   disabled = false,
 }) {
   const hasSaved = addresses.length > 0;
@@ -131,7 +133,7 @@ export default function CheckoutForm({
     if (canSaveMore) {
       saveAddressBox = (
         <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
-          <input type="checkbox" name="save_address" className="w-4 h-4 accent-neutral-900" />
+          <input type="checkbox" name="save_address" defaultChecked={!hasSaved} className="w-4 h-4 accent-neutral-900" />
           Save this address for next time ({addresses.length}/{MAX_SAVED_ADDRESSES} saved)
         </label>
       );
@@ -203,6 +205,15 @@ export default function CheckoutForm({
 
   const submitLabel = 'Order Now';
 
+  let itemWord = 'items';
+  if (itemCount === 1) {
+    itemWord = 'item';
+  }
+  let storeWord = 'stores';
+  if (storeCount === 1) {
+    storeWord = 'store';
+  }
+
   const isSavedTabDisabled = !hasSaved;
 
   return (
@@ -238,21 +249,43 @@ export default function CheckoutForm({
       </div>
 
       <p className="text-[11px] text-neutral-400">
-        Orders are created per store with status “Awaiting Payment”. No payment gateway is required.
+        Orders are created per store with status “Pending”. Press Pay Now in My Orders, then the seller confirms your payment.
       </p>
 
-      {/* total pembayaran n tombol Order Now mengambang di bawah layar */}
-      <div className="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-neutral-200 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-4">
-          <div className="min-w-0 text-sm text-neutral-950">
-            <p>
-              Items: <span className="font-semibold">{itemCount}</span> · Shipping: Free
+      {/* kartu ringkasan + tombol Order Now mengambang (sticky) di bawah layar, di HP & tablet, selalu terlihat walau discroll */}
+      {/* di laptop tombolnya di dalam kartu Order Summary yg sticky (ikut turun) di samping */}
+      <div className="fixed inset-x-3 bottom-3 z-30 lg:static lg:inset-auto lg:z-auto">
+        <div className="max-w-3xl mx-auto overflow-hidden rounded-2xl bg-white border border-neutral-200 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.35)] lg:border-0 lg:shadow-none lg:rounded-none">
+          <div className="lg:hidden px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-800">
+                <span className="w-7 h-7 rounded-lg bg-white border border-neutral-200 flex items-center justify-center">
+                  <FiShoppingBag className="w-4 h-4 text-(--biru)" />
+                </span>
+                Order Summary
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white border border-neutral-200 text-xs font-semibold text-neutral-950">
+                {itemCount} {itemWord}
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-neutral-800">
+              {storeCount} {storeWord} · Shipping: <span className="font-semibold text-(--biru)">Free</span>
             </p>
-            <p className="text-base font-bold">Total Payment {totalText}</p>
           </div>
-          <SubmitButton pendingText="Processing..." className="shrink-0 px-6" disabled={disabled}>
-            {submitLabel}
-          </SubmitButton>
+          <div className="px-4 py-3 lg:p-0 flex items-center justify-between gap-4">
+            <div className="min-w-0 lg:hidden">
+              <p className="text-xl font-bold text-neutral-950 leading-tight">{totalText}</p>
+              <p className="text-xs text-neutral-700">Total payment</p>
+            </div>
+            <SubmitButton
+              pendingText="Processing..."
+              className="shrink-0 px-6 py-3.5 text-base font-semibold inline-flex items-center justify-center gap-2 lg:w-full"
+              disabled={disabled}
+            >
+              {submitLabel}
+              <FiArrowRight className="w-4 h-4" />
+            </SubmitButton>
+          </div>
         </div>
       </div>
     </ActionForm>
