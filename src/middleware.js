@@ -35,6 +35,19 @@ export async function middleware(request) {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   }
 
+  // seller tidak punya halaman belanja (home, produk, keranjang, dll), langsung ke dashboard seller
+  if (user && user.role === 'seller' && !isSellerArea) {
+    return NextResponse.redirect(new URL('/seller/dashboard', request.url));
+  }
+
+
+  // sesi kadaluarsa / akunnya sudah tidak ada di database (misal habis jalankan ulang seed):
+  // hapus cookie lama supaya tidak bolak-balik redirect (ERR_TOO_MANY_REDIRECTS)
+  if (pathname === '/login' && request.nextUrl.searchParams.has('expired')) {
+    const loginResponse = NextResponse.next();
+    loginResponse.cookies.delete('fitfound_session');
+    return loginResponse;
+  }
 
   if (user && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL(homeForRole(user.role), request.url));

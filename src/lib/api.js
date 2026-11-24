@@ -18,6 +18,10 @@ export async function requireBuyerApi() {
     return { response: jsonError(403, 'Admin accounts cannot shop.') };
   }
 
+  if (currentUser.role === 'seller') {
+    return { response: jsonError(403, 'Seller accounts cannot shop.') };
+  }
+
   return { user: currentUser };
 }
 

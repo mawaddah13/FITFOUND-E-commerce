@@ -20,7 +20,7 @@ export default async function RootLayout({ children }) {
   const session = await getSession();
 
   let cartCount = 0;
-  if (session && (session.role === 'buyer' || session.role === 'seller')) {
+  if (session && session.role === 'buyer') {
     try {
       const cartResult = await pool.query(
         `SELECT COALESCE(SUM(ci.jumlah), 0)::int AS total
