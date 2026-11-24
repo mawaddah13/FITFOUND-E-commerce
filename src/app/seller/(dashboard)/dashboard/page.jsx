@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import pool from '@/lib/db';
 import { requireSellerPage } from '@/lib/auth';
-import { PageHeader, Card, StatCard, OrderStatusBadge } from '@/components/ui';
+import { Card, StatCard, OrderStatusBadge } from '@/components/ui';
 import { formatRupiah, formatDate } from '@/lib/format';
 
 // ambil ringkasan pesanan, stok, pendapatan, n pesanan terbaru trs tampilkan dashboard seller
 export default async function SellerDashboardPage() {
-  const { user, store } = await requireSellerPage();
+  const { store } = await requireSellerPage();
 
   const resStats = await pool.query(
     `SELECT
@@ -15,9 +15,7 @@ export default async function SellerDashboardPage() {
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'processing')::int AS to_process,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'shipped')::int AS shipped,
        (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok = 0)::int AS sold_out,
-       (SELECT COUNT(*) FROM products p WHERE p.id_store = $1 AND p.stok > 0 AND (p.stok <= 5 OR EXISTS (
-          SELECT 1 FROM product_sizes ps WHERE ps.id_product = p.id_product AND ps.stok <= 5
-        )))::int AS low_stock,
+       (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok BETWEEN 1 AND 5)::int AS low_stock,
        (SELECT COUNT(*) FROM products WHERE id_store = $1)::int AS total_products,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'completed')::int AS completed_orders,
        (SELECT COALESCE(SUM(total_harga), 0) FROM orders WHERE id_store = $1 AND status_order = 'completed') AS revenue`,
@@ -36,19 +34,12 @@ export default async function SellerDashboardPage() {
   );
   const recentOrders = resRecentOrders.rows;
 
-  // ambil produk yg sudah habis n yg hampir habis (total atau salah satu ukurannya sisa 5 ke bawah)
-  // low_sizes = daftar ukuran yg stoknya 5 ke bawah, contoh "40: 3, 41: 4"
+  // ambil produk yg stoknya hampir habis (sisa 1-5) n yg sudah habis (0) buat info di overview
   const resLowStock = await pool.query(
-    `SELECT p.id_product, p.nama_produk, p.stok, p.gambar,
-            (SELECT STRING_AGG(ps.ukuran || ': ' || ps.stok, ', ' ORDER BY ps.urutan)
-             FROM product_sizes ps
-             WHERE ps.id_product = p.id_product AND ps.stok <= 5 AND ps.ukuran <> '-') AS low_sizes
-     FROM products p
-     WHERE p.id_store = $1
-       AND (p.stok <= 5 OR EXISTS (
-         SELECT 1 FROM product_sizes ps WHERE ps.id_product = p.id_product AND ps.stok <= 5
-       ))
-     ORDER BY p.stok ASC, p.nama_produk ASC
+    `SELECT id_product, nama_produk, stok, gambar
+     FROM products
+     WHERE id_store = $1 AND stok <= 5
+     ORDER BY stok ASC, nama_produk ASC
      LIMIT 5`,
     [store.id_store]
   );
@@ -88,8 +79,6 @@ export default async function SellerDashboardPage() {
       activeClass: 'text-red-600',
     },
   ];
-
-  const greetingTitle = `Hello, ${user.nama}`;
 
   let recentOrdersContent = null;
   if (recentOrders.length === 0) {
@@ -137,9 +126,6 @@ export default async function SellerDashboardPage() {
           // habis = merah, hampir habis = kuning
           let stockBadgeClass = 'bg-amber-100 text-amber-800';
           let stockBadgeText = `${productItem.stok} left`;
-          if (productItem.low_sizes) {
-            stockBadgeText = `Size ${productItem.low_sizes}`;
-          }
           if (productItem.stok === 0) {
             stockBadgeClass = 'bg-red-100 text-red-700';
             stockBadgeText = 'Sold out';
@@ -164,11 +150,6 @@ export default async function SellerDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={greetingTitle}
-        description="Here is what is happening in your store."
-      />
-
       <Card>
         <h3 className="text-base font-semibold">To Do List</h3>
         <p className="text-xs text-neutral-700 mt-0.5">
@@ -224,7 +205,7 @@ export default async function SellerDashboardPage() {
           <div>
             <h3 className="text-base font-semibold">Low &amp; Sold Out Products</h3>
             <p className="text-xs text-neutral-950 mt-0.5">
-              Products with a size that has 5 items or fewer left, including products that are already sold out.
+              Products with 5 items or fewer left in total, including products that are already sold out.
             </p>
           </div>
           <Link href="/seller/products?sort=stock_asc" className="text-xs underline text-neutral-950">

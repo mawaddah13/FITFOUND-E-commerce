@@ -1,14 +1,13 @@
 import pool from '@/lib/db';
 import { requireSellerPage } from '@/lib/auth';
-import Link from 'next/link';
 import DashboardShell from '@/components/DashboardShell';
 
 // cek sesi seller aktif trs atur nav n jumlah pesanan masuk di seller center
 export default async function SellerLayout({ children }) {
-  const { store } = await requireSellerPage();
+  const { user, store } = await requireSellerPage();
 
   const resPendingOrders = await pool.query(
-    "SELECT COUNT(*)::int AS total FROM orders WHERE id_store = $1 AND status_order IN ('pending', 'processing')",
+    "SELECT COUNT(*)::int AS total FROM orders WHERE id_store = $1 AND ((status_order = 'pending' AND dibayar_pada IS NOT NULL) OR status_order = 'processing')",
     [store.id_store]
   );
 
@@ -46,22 +45,15 @@ export default async function SellerLayout({ children }) {
     href: '/seller/store',
   };
 
-  const switchToShoppingAction = (
-    <Link
-      href="/"
-      className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap px-3 py-1.5 text-[11px] font-semibold rounded-full border border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white transition-colors duration-200"
-    >
-      Switch to Shopping →
-    </Link>
-  );
-
+  // sapaan Hello, nama seller ditaruh di sidebar kiri supaya To Do List sejajar dgn menu
   return (
     <DashboardShell
+      title={`Hello, ${user.nama}`}
+      subtitle={store.nama_toko}
       groups={navGroups}
       panelLabel="Seller Center"
       homeHref="/seller/dashboard"
       profile={storeProfile}
-      topAction={switchToShoppingAction}
     >
       {children}
     </DashboardShell>
