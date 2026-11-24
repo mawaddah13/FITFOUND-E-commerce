@@ -4,6 +4,42 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LogoutButton from '@/components/LogoutButton';
 import Logo from '@/components/Logo';
+import {
+  FiGrid,
+  FiShoppingBag,
+  FiPackage,
+  FiPlusSquare,
+  FiHome,
+  FiUser,
+  FiShoppingCart,
+  FiTruck,
+  FiHeart,
+  FiMapPin,
+  FiUsers,
+  FiUserCheck,
+  FiTag,
+  FiShield,
+  FiLogOut,
+} from 'react-icons/fi';
+
+// ikon tiap menu sidebar (buyer, seller, admin) berdasarkan alamat link-nya
+const MENU_ICONS = {
+  '/seller/dashboard': FiGrid,
+  '/seller/orders': FiShoppingBag,
+  '/seller/products': FiPackage,
+  '/seller/products/new': FiPlusSquare,
+  '/seller/store': FiHome,
+  '/buyer/dashboard': FiUser,
+  '/buyer/cart': FiShoppingCart,
+  '/buyer/orders': FiTruck,
+  '/buyer/wishlist': FiHeart,
+  '/buyer/addresses': FiMapPin,
+  '/admin/dashboard': FiGrid,
+  '/admin/users': FiUsers,
+  '/admin/sellers': FiUserCheck,
+  '/admin/categories': FiTag,
+  '/admin/products': FiShield,
+};
 
 // isi halamanny dashboard, nav, sidebar, header
 export default function DashboardShell({
@@ -106,8 +142,14 @@ export default function DashboardShell({
     if (isActive(navLink.href)) {
       linkClass += 'bg-neutral-950 text-white font-medium shadow-sm';
     } else {
-      // di HP tab menu diberi latar abu supaya kelihatan, di laptop transparan
-      linkClass += 'bg-(--abumuda) lg:bg-transparent text-neutral-950 hover:bg-(--abumuda) lg:hover:pl-5';
+      // tiap menu diberi latar abu muda supaya lebih jelas (HP n laptop)
+      linkClass += 'text-neutral-950 hover:bg-(--abutab) lg:hover:pl-5';
+    }
+
+    let iconElement = null;
+    const MenuIcon = MENU_ICONS[navLink.href];
+    if (MenuIcon) {
+      iconElement = <MenuIcon className="w-4 h-4 mr-2.5 shrink-0" aria-hidden="true" />;
     }
 
     let badgeElement = null;
@@ -121,6 +163,7 @@ export default function DashboardShell({
 
     return (
       <Link key={navLink.href} href={navLink.href} className={linkClass}>
+        {iconElement}
         {navLink.label}
         {badgeElement}
       </Link>
@@ -137,7 +180,8 @@ export default function DashboardShell({
     titleBlock = (
       <div className="mb-4 lg:mb-6 px-1 lg:px-4 lg:pt-1">
         <p className="text-[11px] uppercase tracking-wider text-neutral-950">{subtitle}</p>
-        <h1 className="text-lg font-semibold text-neutral-950 truncate">{title}</h1>
+        {/* nama panjang turun ke baris bawah, tidak dipotong titik-titik */}
+        <h1 className="mt-1.5 text-xl font-semibold leading-snug text-neutral-950 break-words">{title}</h1>
       </div>
     );
   }
@@ -159,21 +203,12 @@ export default function DashboardShell({
                 groupKey = groupItem.title;
               }
 
-              let groupHeading = null;
-              if (groupItem.title) {
-                groupHeading = (
-                  <p className="hidden lg:block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-950 underline underline-offset-4 decoration-neutral-950 cursor-default select-none">
-                    {groupItem.title}
-                  </p>
-                );
-              }
-
+              // judul grup (Order, Product, Store) tidak ditampilkan lagi, cukup ikon tiap menu
               return (
                 <div
                   key={groupKey}
-                  className="flex lg:flex-col gap-1 lg:[&:not(:first-child)]:mt-4"
+                  className="flex lg:flex-col gap-1 lg:[&:not(:first-child)]:mt-1"
                 >
-                  {groupHeading}
                   {groupItem.links.map(buildNavLink)}
                 </div>
               );
@@ -181,7 +216,10 @@ export default function DashboardShell({
 
             <div className="shrink-0 lg:mt-4 lg:pt-4 lg:border-t lg:border-neutral-200">
               {/* tombol logout berlatar merah supaya jelas */}
-              <LogoutButton className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-200 lg:hover:pl-5 transition-all duration-200 cursor-pointer whitespace-nowrap" />
+              <LogoutButton className="w-full inline-flex items-center text-left px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-200 lg:hover:pl-5 transition-all duration-200 cursor-pointer whitespace-nowrap">
+                <FiLogOut className="w-4 h-4 mr-2.5 shrink-0" aria-hidden="true" />
+                Logout
+              </LogoutButton>
             </div>
           </nav>
         </aside>
