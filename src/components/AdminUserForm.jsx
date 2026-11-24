@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
-import { Field, inputClass } from '@/components/ui';
 import PasswordInput from '@/components/PasswordInput';
+import { Field, inputClass } from '@/components/ui';
 
 const ACCOUNT_OPTIONS = [
   {
@@ -296,7 +296,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
     let reasonPlaceholder = 'e.g. Closed at the user’s request through customer support.';
     if (statusAkun === 'suspended') {
       reasonLabel = 'Reason for suspension';
-      reasonPlaceholder = 'e.g. Posted abusive language in product reviews.';
+      reasonPlaceholder = 'e.g. Violated platform terms of use.';
     }
 
     let reasonDefaultValue = '';
@@ -350,6 +350,26 @@ export default function AdminUserForm({ action, user, isSelf }) {
       storeDescriptionDefault = user.deskripsi_toko;
     }
 
+    // pilihan verif cuma muncul kalau seller masih pending
+    // kalau sudah di-approve / reject, cukup atur lewat Account Status di atas
+    let verificationSection = <input type="hidden" name="status" value={user.status} />;
+    if (user.status === 'pending') {
+      verificationSection = (
+        <div>
+          <p className="block text-sm font-medium text-neutral-950 mb-1.5">Seller Verification</p>
+          <ChoiceGroup
+            name="status"
+            options={VERIFY_OPTIONS}
+            value={verifikasi}
+            onChange={setVerifikasi}
+          />
+          <p className="text-[11px] text-neutral-950 mt-1.5">
+            Only Approved sellers can open Seller Center and sell.
+          </p>
+        </div>
+      );
+    }
+
     sellerStoreSection = (
       <div className="space-y-5 rounded-xl border border-neutral-200 p-4">
         <Field label="Store Name" htmlFor="nama_toko">
@@ -364,7 +384,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
             className={inputClass}
           />
         </Field>
-        <Field label="Store Description" htmlFor="deskripsi_toko" hint="Shown on the store page.">
+        <Field label="Store Description" htmlFor="deskripsi_toko" hint="Optional. Shown on the store page.">
           <textarea
             id="deskripsi_toko"
             name="deskripsi_toko"
@@ -374,18 +394,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
             className={inputClass}
           />
         </Field>
-        <div>
-          <p className="block text-sm font-medium text-neutral-950 mb-1.5">Seller Verification</p>
-          <ChoiceGroup
-            name="status"
-            options={VERIFY_OPTIONS}
-            value={verifikasi}
-            onChange={setVerifikasi}
-          />
-          <p className="text-[11px] text-neutral-950 mt-1.5">
-            Only Approved sellers can open Seller Center and sell.
-          </p>
-        </div>
+        {verificationSection}
       </div>
     );
   }
@@ -480,8 +489,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
             Reset Password
           </h3>
           <p className="text-[11px] text-neutral-950 mt-1.5">
-            For users who forgot their password. Leave empty to keep the current one. Nobody can see the old
-            password, not even admins — it is stored as a one-way bcrypt hash.
+            For users who forgot their password. Leave empty to keep the current one
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
