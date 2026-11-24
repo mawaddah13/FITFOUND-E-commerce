@@ -2,6 +2,7 @@
 
 import { useState, useActionState } from 'react';
 import { registerAction } from '@/app/action/auth';
+import PasswordInput from '@/components/PasswordInput';
 
 const inputClass =
   'w-full px-4 py-3 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:border-(--biru) hover:border-neutral-300 text-neutral-900 placeholder:text-neutral-400';
@@ -193,9 +194,8 @@ export default function RegisterForm({ onSwitch }) {
           <label htmlFor="reg-password" className="block text-sm font-medium text-neutral-800 mb-1.5">
             Password
           </label>
-          <input
+          <PasswordInput
             id="reg-password"
-            type="password"
             name="password"
             required
             minLength={6}

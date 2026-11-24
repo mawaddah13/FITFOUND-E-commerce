@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { FiAlertOctagon, FiSlash } from 'react-icons/fi';
 import { loginAction } from '@/app/action/auth';
 import { formatDate } from '@/lib/format';
+import PasswordInput from '@/components/PasswordInput';
 
 const inputClass =
   'w-full px-4 py-3 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:border-(--biru) hover:border-neutral-300 text-neutral-900 placeholder:text-neutral-400';
@@ -192,9 +193,8 @@ export default function LoginForm({ nextPath = '', notice = '', onSwitch }) {
           <label htmlFor="login-password" className="block text-sm font-medium text-neutral-800 mb-1.5">
             Password
           </label>
-          <input
+          <PasswordInput
             id="login-password"
-            type="password"
             name="password"
             required
             placeholder="Your password"
