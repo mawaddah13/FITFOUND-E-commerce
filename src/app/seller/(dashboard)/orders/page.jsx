@@ -67,7 +67,8 @@ export default async function SellerOrdersPage({ searchParams }) {
           return (
             <div
               key={orderItem.id_order}
-              className="bg-white rounded-2xl border border-neutral-200/80 p-5"
+              id={`order-${orderItem.id_order}`}
+              className="scroll-mt-28 bg-white rounded-2xl border border-neutral-200/80 p-5 target:border-neutral-900 target:ring-2 target:ring-neutral-200"
             >
               <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-neutral-100">
                 <div>

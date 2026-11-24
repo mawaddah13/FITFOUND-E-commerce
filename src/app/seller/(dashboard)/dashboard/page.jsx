@@ -67,9 +67,10 @@ export default async function SellerDashboardPage() {
       <div className="divide-y divide-neutral-100">
         {recentOrders.map(function buildRecentOrderRow(orderItem) {
           return (
-            <div
+            <Link
               key={orderItem.id_order}
-              className="py-3 flex flex-wrap items-center justify-between gap-2"
+              href={`/seller/orders#order-${orderItem.id_order}`}
+              className="py-3 px-2 -mx-2 rounded-xl flex flex-wrap items-center justify-between gap-2 hover:bg-neutral-50 transition-colors duration-200"
             >
               <div>
                 <p className="text-sm font-medium">
@@ -85,7 +86,7 @@ export default async function SellerDashboardPage() {
                   {formatRupiah(orderItem.total_harga)}
                 </span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -142,6 +143,7 @@ export default async function SellerDashboardPage() {
         <StatCard
           label="Revenue (Completed)"
           value={formatRupiah(stats.revenue)}
+          href="/seller/orders?status=completed"
         />
       </div>
 
