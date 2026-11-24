@@ -54,9 +54,10 @@ export default function RegisterForm({ onSwitch }) {
       'relative z-10 py-2.5 text-xs font-medium rounded-lg transition-colors duration-300 cursor-pointer text-white';
   }
 
-  let roleHint = 'You can apply to become a Seller later from your account.';
+  let roleHint = 'Buyer accounts are for shopping and cannot be changed into Seller accounts later.';
   if (isSeller) {
-    roleHint = 'Seller accounts need Admin approval. You can still shop while waiting.';
+    roleHint =
+      'Seller accounts need Admin approval. Before selling, add your phone number and address in Store Profile.';
   }
 
   let storeFieldWrapperClass =
@@ -71,7 +72,6 @@ export default function RegisterForm({ onSwitch }) {
   let defaultNama = '';
   let defaultToko = '';
   let defaultEmail = '';
-  let defaultHp = '';
   if (state && state.values) {
     if (state.values.nama) {
       defaultNama = state.values.nama;
@@ -81,9 +81,6 @@ export default function RegisterForm({ onSwitch }) {
     }
     if (state.values.email) {
       defaultEmail = state.values.email;
-    }
-    if (state.values.no_hp) {
-      defaultHp = state.values.no_hp;
     }
   }
 
@@ -171,21 +168,6 @@ export default function RegisterForm({ onSwitch }) {
             required
             defaultValue={defaultEmail}
             placeholder="email@gmail.com"
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="reg-hp" className="block text-sm font-medium text-neutral-800 mb-1.5">
-            Phone Number
-          </label>
-          <input
-            id="reg-hp"
-            type="tel"
-            name="no_hp"
-            required
-            defaultValue={defaultHp}
-            placeholder="Your phone number"
             className={inputClass}
           />
         </div>

@@ -4,7 +4,7 @@ import pool, { withTransaction } from '@/lib/db';
 import { createSession, deleteSession, getSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { liftExpiredSuspensions } from '@/lib/auth';
-import { getString, isValidEmail, isValidPhone } from '@/lib/validation';
+import { getString, isValidEmail } from '@/lib/validation';
 import { redirect } from 'next/navigation';
 
 function formatAuthError(error) {
@@ -144,13 +144,13 @@ export async function registerAction(prevState, formData) {
   const nama = getString(formData, 'nama');
   const namaToko = getString(formData, 'nama_toko');
   const email = getString(formData, 'email').toLowerCase();
-  const noHp = getString(formData, 'no_hp');
   const password = formData.get('password')?.toString() || '';
 
-  const values = { role, nama, nama_toko: namaToko, email, no_hp: noHp };
+  // no hp n alamat tidak diminta saat daftar, diisi nanti di profil (buyer saat order, seller sebelum jualan)
+  const values = { role, nama, nama_toko: namaToko, email };
 
-  if (nama === '' || email === '' || noHp === '' || password === '') {
-    return { error: 'Full name, email, phone number, and password are required.', values };
+  if (nama === '' || email === '' || password === '') {
+    return { error: 'Full name, email, and password are required.', values };
   }
 
   if (role !== 'buyer' && role !== 'seller') {
@@ -163,10 +163,6 @@ export async function registerAction(prevState, formData) {
 
   if (!isValidEmail(email)) {
     return { error: 'Please enter a valid email address.', values };
-  }
-
-  if (!isValidPhone(noHp)) {
-    return { error: 'Phone number must be 8–20 digits.', values };
   }
 
   if (password.length < 6) {
@@ -196,10 +192,10 @@ export async function registerAction(prevState, formData) {
 
     const newUser = await withTransaction(async (client) => {
       const insertUser = await client.query(
-        `INSERT INTO users (nama, email, password_hash, no_hp, role, status)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO users (nama, email, password_hash, role, status)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id_user, role, status`,
-        [nama, email, passwordHash, noHp, role, initialStatus]
+        [nama, email, passwordHash, role, initialStatus]
       );
       const created = insertUser.rows[0];
 
