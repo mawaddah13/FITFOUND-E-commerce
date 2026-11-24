@@ -24,12 +24,12 @@ export async function DELETE(request, { params }) {
 
     let removedMessage = 'Removed from wishlist.';
     if (resDeleteWishlist.rowCount === 0) {
-      removedMessage = 'Product was not in wishlist.';
+      removedMessage = 'This product is not in your wishlist.';
     }
 
     return NextResponse.json({ message: removedMessage, wishlisted: false });
   } catch (error) {
     console.error('DELETE /api/wishlist error:', error);
-    return jsonError(500, 'Failed to update wishlist.');
+    return jsonError(500, 'Could not update your wishlist. Please try again.');
   }
 }

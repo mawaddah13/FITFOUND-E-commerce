@@ -22,7 +22,7 @@ export default async function WishlistPage() {
   if (products.length === 0) {
     wishlistContent = (
       <EmptyState
-        message="Your wishlist is empty. Tap the heart icon on any product you love to add it here."
+        message="Your wishlist is empty. Tap the heart icon on a product to save it here."
         actionHref="/products"
         actionLabel="Browse Products"
       />
@@ -48,7 +48,7 @@ export default async function WishlistPage() {
   return (
     <div>
       <PageHeader
-        title="Wishlist"
+        title="My Wishlist"
         description="Products you love and want, kept separate from your cart."
       />
       {wishlistContent}

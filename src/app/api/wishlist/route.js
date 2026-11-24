@@ -62,6 +62,6 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error('POST /api/wishlist error:', error);
-    return jsonError(500, 'Failed to update wishlist.');
+    return jsonError(500, 'Could not update your wishlist. Please try again.');
   }
 }
