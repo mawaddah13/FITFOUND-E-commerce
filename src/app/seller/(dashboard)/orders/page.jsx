@@ -6,7 +6,16 @@ import { PageHeader, EmptyState, OrderStatusBadge } from '@/components/ui';
 import { formatRupiah, formatDate, ORDER_STATUS } from '@/lib/format';
 import { hasSize } from '@/lib/sizes';
 
-const FILTERS = ['all', 'pending', 'processing', 'shipped', 'completed', 'cancelled'];
+const FILTERS = [
+  'all',
+  'pending',
+  'waiting_verification',
+  'paid',
+  'processing',
+  'shipped',
+  'completed',
+  'cancelled',
+];
 
 // cek filter status trs tampilkan daftar pesanan masuk untuk toko seller
 export default async function SellerOrdersPage({ searchParams }) {
@@ -24,6 +33,12 @@ export default async function SellerOrdersPage({ searchParams }) {
   // ambil pesanan masuk ke toko jg info pembeli n barangnya
   let queryText = `
     SELECT o.id_order, o.total_harga, o.status_order, o.alamat_pengiriman, o.catatan, o.created_at,
+           o.bukti_pembayaran,
+           COALESCE(
+             (SELECT JSON_AGG(JSON_BUILD_OBJECT('status', h.status_order, 'tanggal', h.created_at) ORDER BY h.created_at)
+              FROM order_status_history h WHERE h.id_order = o.id_order),
+             '[]'
+           ) AS riwayat,
            u.nama AS nama_buyer, u.email AS email_buyer,
            COALESCE(
              JSON_AGG(JSON_BUILD_OBJECT(
@@ -57,7 +72,7 @@ export default async function SellerOrdersPage({ searchParams }) {
           let noteSectionElement = null;
           if (orderItem.catatan) {
             noteSectionElement = (
-              <div className="text-xs text-neutral-600">
+              <div className="text-xs text-neutral-900">
                 <span className="font-semibold text-neutral-800">Note:</span>{' '}
                 {orderItem.catatan}
               </div>
@@ -73,12 +88,12 @@ export default async function SellerOrdersPage({ searchParams }) {
               <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-neutral-100">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">
+                    <span className="text-base font-bold text-neutral-950">
                       Order #{orderItem.id_order}
                     </span>
                     <OrderStatusBadge status={orderItem.status_order} />
                   </div>
-                  <p className="text-[11px] text-neutral-500 mt-1">
+                  <p className="text-[11px] text-neutral-800 mt-1">
                     {orderItem.nama_buyer} ({orderItem.email_buyer}) ·{' '}
                     {formatDate(orderItem.created_at)}
                   </p>
@@ -114,7 +129,7 @@ export default async function SellerOrdersPage({ searchParams }) {
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm truncate">{itemEntry.nama}</p>
-                          <p className="text-[11px] text-neutral-500">
+                          <p className="text-[11px] text-neutral-800">
                             {sizePrefixText}
                             {itemEntry.jumlah} × {formatRupiah(itemEntry.harga)}
                           </p>
@@ -122,7 +137,7 @@ export default async function SellerOrdersPage({ searchParams }) {
                       </div>
                     );
                   })}
-                  <div className="pt-2 text-xs text-neutral-600">
+                  <div className="pt-2 text-xs text-neutral-900">
                     <span className="font-semibold text-neutral-800">Ship to:</span>{' '}
                     {orderItem.alamat_pengiriman}
                   </div>
@@ -132,6 +147,9 @@ export default async function SellerOrdersPage({ searchParams }) {
                 <OrderStatusPanel
                   idOrder={orderItem.id_order}
                   status={orderItem.status_order}
+                  paymentProof={orderItem.bukti_pembayaran}
+                  history={orderItem.riwayat}
+                  createdAt={orderItem.created_at}
                 />
               </div>
             </div>
@@ -148,7 +166,7 @@ export default async function SellerOrdersPage({ searchParams }) {
         description="Orders for products from your store."
       />
 
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+      <div className="flex gap-2 overflow-x-auto mb-4 p-2 bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
         {FILTERS.map(function buildOrderFilterLink(filterKey) {
           let filterHref = `/seller/orders?status=${filterKey}`;
           if (filterKey === 'all') {
@@ -161,7 +179,7 @@ export default async function SellerOrdersPage({ searchParams }) {
           }
 
           let filterLinkClass =
-            'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400';
+            'bg-(--abumuda) text-neutral-950 border-transparent hover:border-neutral-400';
           if (activeFilter === filterKey) {
             filterLinkClass = 'bg-neutral-900 text-white border-neutral-900';
           }

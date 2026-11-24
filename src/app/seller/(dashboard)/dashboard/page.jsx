@@ -11,9 +11,11 @@ export default async function SellerDashboardPage() {
   const resStats = await pool.query(
     `SELECT
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'pending')::int AS awaiting_payment,
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'processing')::int AS to_process,
+       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'waiting_verification')::int AS to_verify,
+       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order IN ('paid', 'processing'))::int AS to_process,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'shipped')::int AS shipped,
        (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok = 0)::int AS sold_out,
+       (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok BETWEEN 1 AND 5)::int AS low_stock,
        (SELECT COUNT(*) FROM products WHERE id_store = $1)::int AS total_products,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'completed')::int AS completed_orders,
        (SELECT COALESCE(SUM(total_harga), 0) FROM orders WHERE id_store = $1 AND status_order = 'completed') AS revenue`,
@@ -32,6 +34,17 @@ export default async function SellerDashboardPage() {
   );
   const recentOrders = resRecentOrders.rows;
 
+  // ambil produk yg stoknya hampir habis (sisa 1-5) buat info di overview
+  const resLowStock = await pool.query(
+    `SELECT id_product, nama_produk, stok, gambar
+     FROM products
+     WHERE id_store = $1 AND stok BETWEEN 1 AND 5
+     ORDER BY stok ASC, nama_produk ASC
+     LIMIT 5`,
+    [store.id_store]
+  );
+  const lowStockProducts = resLowStock.rows;
+
   const todoItems = [
     {
       label: 'Awaiting Payment',
@@ -39,9 +52,14 @@ export default async function SellerDashboardPage() {
       href: '/seller/orders?status=pending',
     },
     {
+      label: 'Verify Payment',
+      value: stats.to_verify,
+      href: '/seller/orders?status=waiting_verification',
+    },
+    {
       label: 'To Process',
       value: stats.to_process,
-      href: '/seller/orders?status=processing',
+      href: '/seller/orders?status=paid',
     },
     {
       label: 'Shipped',
@@ -49,9 +67,14 @@ export default async function SellerDashboardPage() {
       href: '/seller/orders?status=shipped',
     },
     {
+      label: 'Low Stock (5 or less)',
+      value: stats.low_stock,
+      href: '/seller/products?stock=low',
+    },
+    {
       label: 'Sold Out Products',
       value: stats.sold_out,
-      href: '/seller/products',
+      href: '/seller/products?stock=out',
     },
   ];
 
@@ -60,7 +83,7 @@ export default async function SellerDashboardPage() {
   let recentOrdersContent = null;
   if (recentOrders.length === 0) {
     recentOrdersContent = (
-      <p className="text-sm text-neutral-500 py-6 text-center">No orders yet.</p>
+      <p className="text-sm text-neutral-800 py-6 text-center">No orders yet.</p>
     );
   } else {
     recentOrdersContent = (
@@ -73,10 +96,10 @@ export default async function SellerDashboardPage() {
               className="py-3 px-2 -mx-2 rounded-xl flex flex-wrap items-center justify-between gap-2 hover:bg-neutral-50 transition-colors duration-200"
             >
               <div>
-                <p className="text-sm font-medium">
-                  Order #{orderItem.id_order} · {orderItem.nama_buyer}
+                <p className="text-sm text-neutral-950">
+                  <span className="font-bold">Order #{orderItem.id_order}</span> · {orderItem.nama_buyer}
                 </p>
-                <p className="text-[11px] text-neutral-500">
+                <p className="text-[11px] text-neutral-800">
                   {formatDate(orderItem.created_at)}
                 </p>
               </div>
@@ -93,6 +116,30 @@ export default async function SellerDashboardPage() {
     );
   }
 
+  let lowStockContent = (
+    <p className="text-sm text-neutral-950 py-6 text-center">All products have enough stock.</p>
+  );
+  if (lowStockProducts.length > 0) {
+    lowStockContent = (
+      <div className="divide-y divide-neutral-100">
+        {lowStockProducts.map(function buildLowStockRow(productItem) {
+          return (
+            <Link
+              key={productItem.id_product}
+              href={`/seller/products/${productItem.id_product}/edit`}
+              className="py-3 px-2 -mx-2 rounded-xl flex items-center justify-between gap-3 hover:bg-neutral-50 transition-colors duration-200"
+            >
+              <span className="text-sm font-medium text-neutral-950 truncate">{productItem.nama_produk}</span>
+              <span className="shrink-0 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-amber-100 text-amber-800">
+                {productItem.stok} left
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -102,11 +149,11 @@ export default async function SellerDashboardPage() {
 
       <Card>
         <h3 className="text-base font-semibold">To Do List</h3>
-        <p className="text-xs text-neutral-400 mt-0.5">
+        <p className="text-xs text-neutral-700 mt-0.5">
           Things you need to take care of
         </p>
 
-        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 md:divide-x divide-neutral-200">
+        <div className="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 md:divide-x divide-neutral-200">
           {todoItems.map(function buildTodoItem(todoEntry) {
             let todoCountClass = 'text-2xl font-bold text-neutral-300';
             if (todoEntry.value > 0) {
@@ -120,7 +167,7 @@ export default async function SellerDashboardPage() {
                 className="group py-3 px-2 text-center rounded-xl hover:bg-neutral-50 transition-colors duration-200"
               >
                 <p className={todoCountClass}>{todoEntry.value}</p>
-                <p className="text-xs text-neutral-600 mt-1 group-hover:text-neutral-950">
+                <p className="text-xs text-neutral-900 mt-1 group-hover:text-neutral-950">
                   {todoEntry.label}
                 </p>
               </Link>
@@ -149,8 +196,21 @@ export default async function SellerDashboardPage() {
 
       <Card>
         <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-base font-semibold">Low Stock Products</h3>
+            <p className="text-xs text-neutral-950 mt-0.5">Products with 5 items or less left</p>
+          </div>
+          <Link href="/seller/products?stock=low" className="text-xs underline text-neutral-950">
+            View all
+          </Link>
+        </div>
+        {lowStockContent}
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-semibold">Recent Orders</h3>
-          <Link href="/seller/orders" className="text-xs underline text-neutral-600">
+          <Link href="/seller/orders" className="text-xs underline text-neutral-900">
             View all
           </Link>
         </div>
