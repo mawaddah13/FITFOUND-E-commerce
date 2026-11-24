@@ -42,7 +42,7 @@ export default async function AdminEditUserPage({ params }) {
   const resUser = await pool.query(
     `SELECT u.id_user, u.nama, u.email, u.no_hp, u.alamat, u.role, u.status, u.status_akun,
             u.alasan_status, u.suspend_sampai, u.created_at,
-            s.id_store, s.nama_toko,
+            s.id_store, s.nama_toko, s.deskripsi_toko,
             (SELECT COUNT(*) FROM orders o WHERE o.id_user = u.id_user)::int AS total_orders
      FROM users u
      LEFT JOIN stores s ON s.id_user = u.id_user
@@ -73,6 +73,7 @@ export default async function AdminEditUserPage({ params }) {
     created_at: rawUser.created_at,
     id_store: rawUser.id_store,
     nama_toko: rawUser.nama_toko,
+    deskripsi_toko: rawUser.deskripsi_toko,
     total_orders: rawUser.total_orders,
   };
 
@@ -141,7 +142,7 @@ export default async function AdminEditUserPage({ params }) {
     <div>
       <PageHeader
         title="Edit User"
-        description="Update profile details, access, and password. The email stays with the account owner."
+        description="Admin can edit every detail of this account: name, email, phone, address, store, access, and password."
         action={
           <Link
             href="/admin/users"
