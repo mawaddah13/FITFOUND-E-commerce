@@ -1,8 +1,6 @@
--- ============================================================================
 -- FITFOUND - Schema PostgreSQL
 -- Jalankan setelah database dibuat, lalu lanjutkan dengan seed.sql
 -- Warn: DROP TABLE bakal menghapus semua data yang ada dan menggantinya dengan yang baru
--- ============================================================================
 
 -- Hapus tabel lama (urutan dari child ke parent)
 DROP TABLE IF EXISTS reviews CASCADE;
@@ -41,12 +39,14 @@ CREATE TABLE users (
 
 -- Profil toko (1 user seller = 1 toko)
 -- gambar_toko menyimpan path file di public/uploads/stores
+-- sembunyikan_produk: TRUE = produk toko ini disembunyikan dari katalog saat seller sendiri berbelanja
 CREATE TABLE stores (
   id_store SERIAL PRIMARY KEY,
   id_user INT NOT NULL UNIQUE,
   nama_toko VARCHAR(120) NOT NULL,
   deskripsi_toko TEXT,
   gambar_toko TEXT,
+  sembunyikan_produk BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_stores_users
@@ -259,7 +259,7 @@ CREATE TABLE reviews (
     ON DELETE CASCADE
 );
 
--- Index untuk foreign key agar query join & filter lebih cepat
+
 CREATE INDEX idx_products_store ON products(id_store);
 CREATE INDEX idx_products_category ON products(id_category);
 CREATE INDEX idx_orders_user ON orders(id_user);

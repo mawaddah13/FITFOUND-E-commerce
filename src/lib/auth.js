@@ -37,7 +37,7 @@ export async function liftExpiredSuspensions() {
 // ambil data toko punya user brdsrkn id user
 export const getStoreByUserId = cache(async function getStoreByUserId(idUser) {
   const res = await pool.query(
-    `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, created_at
+    `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, sembunyikan_produk, created_at
      FROM stores
      WHERE id_user = $1`,
     [idUser]

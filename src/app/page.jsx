@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Hero from '@/components/Hero';
 import ProductCard from '@/components/ProductCard';
 import CatalogLayout from '@/components/CatalogLayout';
-import { getWishlistIds } from '@/lib/products';
+import { getWishlistIds, getHiddenStoreId } from '@/lib/products';
 import {
   parseCatalogParams,
   getCategories,
@@ -38,19 +38,25 @@ export default async function HomePage({ searchParams }) {
 
   try {
     categories = await getCategories();
+    const hiddenStoreId = await getHiddenStoreId(session);
     if (isFiltering) {
-      products = await queryCatalog(filters, { limit: FILTERED_LIMIT });
+      products = await queryCatalog(filters, {
+        limit: FILTERED_LIMIT,
+        excludeStoreId: hiddenStoreId,
+      });
     } else {
       // ambil maksimal 8 produk baru datang dan 8 rekomendasi acak yg stoknya tersedia
       products = await queryCatalog(filters, {
         inStockOnly: true,
         limit: NEW_ARRIVALS_LIMIT,
+        excludeStoreId: hiddenStoreId,
       });
 
       recommended = await queryCatalog(filters, {
         inStockOnly: true,
         random: true,
         limit: RECOMMENDATION_LIMIT,
+        excludeStoreId: hiddenStoreId,
       });
     }
     wishlistIds = await getWishlistIds(session);

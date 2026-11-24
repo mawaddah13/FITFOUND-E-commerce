@@ -34,6 +34,7 @@ export async function updateStoreAction(prevState, formData) {
 
   const storeName = getString(formData, 'nama_toko');
   const storeDescription = getString(formData, 'deskripsi_toko');
+  const hideOwnProducts = formData.get('sembunyikan_produk') === 'on';
 
   if (storeName === '') {
     return { error: 'Store name is required.' };
@@ -64,8 +65,8 @@ export async function updateStoreAction(prevState, formData) {
   }
 
   await pool.query(
-    'UPDATE stores SET updated_at = CURRENT_TIMESTAMP, nama_toko = $1, deskripsi_toko = $2, gambar_toko = $3 WHERE id_store = $4',
-    [storeName, descriptionValue, storeImage.value, seller.store.id_store]
+    'UPDATE stores SET updated_at = CURRENT_TIMESTAMP, nama_toko = $1, deskripsi_toko = $2, gambar_toko = $3, sembunyikan_produk = $4 WHERE id_store = $5',
+    [storeName, descriptionValue, storeImage.value, hideOwnProducts, seller.store.id_store]
   );
 
   if (storeImage.value !== seller.store.gambar_toko) {

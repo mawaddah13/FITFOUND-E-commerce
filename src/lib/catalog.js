@@ -113,6 +113,12 @@ export async function queryCatalog(filters, catalogOptions = {}) {
     queryText += ' AND p.stok > 0';
   }
 
+  // sembunyikan produk toko sendiri kalau seller memilih Hide Your Own Products
+  if (catalogOptions.excludeStoreId) {
+    queryValues.push(catalogOptions.excludeStoreId);
+    queryText += ` AND p.id_store <> $${queryValues.length}`;
+  }
+
   if (filters.q !== '') {
     queryValues.push(`%${filters.q}%`);
     queryText += ` AND p.nama_produk ILIKE $${queryValues.length}`;
@@ -167,13 +173,14 @@ export async function queryCatalog(filters, catalogOptions = {}) {
 }
 
 // ambil produk unggulan dengan minimal terjual dan rating tertentu
-export async function getFeaturedProducts() {
+export async function getFeaturedProducts(excludeStoreId = null) {
   const featuredResult = await pool.query(
     `${PRODUCT_CARD_SELECT}
      WHERE p.jumlah_terjual > $1
        AND r.avg_rating >= $2
+       AND ($3::int IS NULL OR p.id_store <> $3::int)
      ORDER BY RANDOM()`,
-    [FEATURED_MIN_SOLD, FEATURED_MIN_RATING]
+    [FEATURED_MIN_SOLD, FEATURED_MIN_RATING, excludeStoreId]
   );
   return featuredResult.rows;
 }

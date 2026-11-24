@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getSession } from '@/lib/session';
 import ProductCard from '@/components/ProductCard';
-import { getWishlistIds } from '@/lib/products';
+import { getWishlistIds, getHiddenStoreId } from '@/lib/products';
 import { getFeaturedProducts, FEATURED_MIN_SOLD, FEATURED_MIN_RATING } from '@/lib/catalog';
 
 // ambil produk unggulan trs tampilkan di halaman best sellers
@@ -12,7 +12,8 @@ export default async function BestSellersPage() {
   let wishlistIds = [];
 
   try {
-    products = await getFeaturedProducts();
+    const hiddenStoreId = await getHiddenStoreId(session);
+    products = await getFeaturedProducts(hiddenStoreId);
     wishlistIds = await getWishlistIds(session);
   } catch (error) {
     console.error('Failed to load best sellers:', error.message);

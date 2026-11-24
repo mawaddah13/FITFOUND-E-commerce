@@ -79,6 +79,21 @@ export default async function StorePage() {
                 className={inputClass}
               />
             </Field>
+            <label className="flex items-start gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer">
+              <input
+                type="checkbox"
+                name="sembunyikan_produk"
+                defaultChecked={store.sembunyikan_produk}
+                className="mt-0.5 w-4 h-4 accent-neutral-900"
+              />
+              <span>
+                <span className="block text-sm font-medium text-neutral-950">Hide Your Own Products</span>
+                <span className="block text-[11px] text-neutral-950 mt-0.5">
+                  When you shop on FITFOUND, products from your store are hidden from Home, All Products,
+                  Best Sellers, and search. You can’t buy your own products anyway.
+                </span>
+              </span>
+            </label>
             <SubmitButton>Save Store Profile</SubmitButton>
           </ActionForm>
         </Card>

@@ -21,6 +21,27 @@ export const PRODUCT_CARD_SELECT = `
   ) r ON r.id_product = p.id_product
 `;
 
+// ambil id toko seller yg memilih "Hide Your Own Products", null kalau tidak disembunyikan
+export async function getHiddenStoreId(sessionData) {
+  if (!sessionData || sessionData.role !== 'seller' || !sessionData.storeId) {
+    return null;
+  }
+
+  try {
+    const storeResult = await pool.query(
+      'SELECT sembunyikan_produk FROM stores WHERE id_store = $1',
+      [sessionData.storeId]
+    );
+    if (storeResult.rows.length > 0 && storeResult.rows[0].sembunyikan_produk) {
+      return sessionData.storeId;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 // ambil daftar id produk di wishlist untuk sesi buyer atau seller
 export async function getWishlistIds(sessionData) {
   if (!sessionData || (sessionData.role !== 'buyer' && sessionData.role !== 'seller')) {
