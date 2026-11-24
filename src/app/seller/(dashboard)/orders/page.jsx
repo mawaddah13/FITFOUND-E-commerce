@@ -155,9 +155,9 @@ export default async function SellerOrdersPage({ searchParams }) {
             filterHref = '/seller/orders';
           }
 
-          let filterLabel = ORDER_STATUS[filterKey].label;
-          if (filterKey === 'all') {
-            filterLabel = 'All';
+          let filterLabel = 'All';
+          if (filterKey !== 'all') {
+            filterLabel = ORDER_STATUS[filterKey].label;
           }
 
           let filterLinkClass =
