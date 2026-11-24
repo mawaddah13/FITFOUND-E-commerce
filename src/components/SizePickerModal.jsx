@@ -16,7 +16,7 @@ async function readJson(apiResponse) {
 }
 
 // pemilih ukuran, jumlah produk kirim ke keranjang
-export default function SizePickerModal({ productId, onClose, onAdded }) {
+export default function SizePickerModal({ productId, mode = 'cart', onClose, onAdded }) {
   const router = useRouter();
   const [product, setProduct] = useState(null);
   const [sizes, setSizes] = useState([]);
@@ -154,6 +154,18 @@ export default function SizePickerModal({ productId, onClose, onAdded }) {
     setIsSubmitting(true);
     setErrorMessage('');
 
+    // buy now: langsung ke checkout tanpa masuk keranjang
+    if (submitMode === 'buy') {
+      const checkoutParams = new URLSearchParams({
+        product: String(productId),
+        size: ukuran,
+        qty: String(jumlah),
+      });
+      router.push(`/buyer/checkout?${checkoutParams.toString()}`);
+      onClose();
+      return;
+    }
+
     try {
       const apiResponse = await fetch('/api/cart', {
         method: 'POST',
@@ -169,12 +181,6 @@ export default function SizePickerModal({ productId, onClose, onAdded }) {
           setErrorMessage(`Failed to add to cart (error ${apiResponse.status}).`);
         }
         setIsSubmitting(false);
-        return;
-      }
-
-      if (submitMode === 'buy') {
-        router.push('/buyer/cart');
-        onClose();
         return;
       }
 
@@ -265,6 +271,11 @@ export default function SizePickerModal({ productId, onClose, onAdded }) {
       buyNowLabel = 'Please wait...';
     }
 
+    let addToCartLabel = 'Add to Cart';
+    if (isSubmitting) {
+      addToCartLabel = 'Adding...';
+    }
+
     // kurangi jumlah produk
     function handleDecreaseQty() {
       changeQty(jumlah - 1);
@@ -288,6 +299,31 @@ export default function SizePickerModal({ productId, onClose, onAdded }) {
     const isDecreaseDisabled = !selectedSize || jumlah <= 1;
     const isIncreaseDisabled = !selectedSize || jumlah >= maxQty;
     const isSubmitDisabled = isSubmitting || totalStock <= 0;
+
+    // tombol akhir menyesuaikan tombol yg diklik di kartu produk
+    let submitButton = (
+      <button
+        type="button"
+        onClick={handleAddToCartClick}
+        disabled={isSubmitDisabled}
+        className="mt-6 w-full inline-flex items-center justify-center gap-2 py-3 text-sm font-medium text-white bg-neutral-950 rounded-xl hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <FiShoppingCart className="w-4 h-4" />
+        {addToCartLabel}
+      </button>
+    );
+    if (mode === 'buy') {
+      submitButton = (
+        <button
+          type="button"
+          onClick={handleBuyNowClick}
+          disabled={isSubmitDisabled}
+          className="mt-6 w-full py-3 text-sm font-medium text-white bg-neutral-950 rounded-xl hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {buyNowLabel}
+        </button>
+      );
+    }
 
     modalContent = (
       <>
@@ -337,25 +373,7 @@ export default function SizePickerModal({ productId, onClose, onAdded }) {
 
         {errorBanner}
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handleAddToCartClick}
-            disabled={isSubmitDisabled}
-            className="inline-flex items-center justify-center gap-2 py-3 text-sm font-medium text-neutral-950 bg-white border border-neutral-950 rounded-xl hover:bg-neutral-100 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FiShoppingCart className="w-4 h-4" />
-            Add to Cart
-          </button>
-          <button
-            type="button"
-            onClick={handleBuyNowClick}
-            disabled={isSubmitDisabled}
-            className="py-3 text-sm font-medium text-white bg-neutral-950 rounded-xl hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {buyNowLabel}
-          </button>
-        </div>
+        {submitButton}
       </>
     );
   }

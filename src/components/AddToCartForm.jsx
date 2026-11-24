@@ -54,23 +54,49 @@ export default function AddToCartForm({ productId, sizes = [] }) {
     setJumlah(changeEvent.target.value);
   }
 
-  // cek input ukuran n jumlah lalu kirim item ke keranjang
-  async function handleSubmit(submitEvent) {
-    submitEvent.preventDefault();
-
+  // cek ukuran n jumlah yg dipilih, kembalikan jumlahnya kalau valid
+  function readValidQty() {
     if (!selectedSize) {
       setFeedback({ type: 'error', text: 'Please select a size first.' });
-      return;
+      return null;
     }
 
     const qty = Number(jumlah);
     if (!Number.isInteger(qty) || qty < 1) {
       setFeedback({ type: 'error', text: 'Quantity must be at least 1 item.' });
-      return;
+      return null;
     }
 
     if (qty > stock) {
       setFeedback({ type: 'error', text: `Only ${stock} item(s) left${sizeSuffix(ukuran)}.` });
+      return null;
+    }
+
+    return qty;
+  }
+
+  // buy now: langsung ke checkout tanpa memasukkan produk ke keranjang
+  function handleBuyNow() {
+    const qty = readValidQty();
+    if (!qty) {
+      return;
+    }
+
+    setFeedback(null);
+    const checkoutParams = new URLSearchParams({
+      product: String(productId),
+      size: ukuran,
+      qty: String(qty),
+    });
+    router.push(`/buyer/checkout?${checkoutParams.toString()}`);
+  }
+
+  // cek input ukuran n jumlah lalu kirim item ke keranjang
+  async function handleSubmit(submitEvent) {
+    submitEvent.preventDefault();
+
+    const qty = readValidQty();
+    if (!qty) {
       return;
     }
 
@@ -190,9 +216,23 @@ export default function AddToCartForm({ productId, sizes = [] }) {
   }
 
   let submitButtonClass =
-    'bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+    'bg-white border border-neutral-950 text-neutral-950 hover:bg-neutral-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
   if (isOutOfStock) {
     submitButtonClass = 'bg-neutral-200 text-neutral-500 cursor-not-allowed';
+  }
+
+  let buyNowButton = null;
+  if (!isOutOfStock) {
+    buyNowButton = (
+      <button
+        type="button"
+        onClick={handleBuyNow}
+        disabled={isLoading}
+        className="flex-1 py-3.5 text-sm font-medium rounded-xl transition bg-neutral-950 hover:bg-neutral-800 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Buy Now
+      </button>
+    );
   }
 
   let feedbackBanner = null;
@@ -241,6 +281,7 @@ export default function AddToCartForm({ productId, sizes = [] }) {
         >
           {submitButtonLabel}
         </button>
+        {buyNowButton}
       </div>
 
       {feedbackBanner}
