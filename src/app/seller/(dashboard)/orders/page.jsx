@@ -6,16 +6,27 @@ import { PageHeader, EmptyState, OrderStatusBadge } from '@/components/ui';
 import { formatRupiah, formatDate, ORDER_STATUS } from '@/lib/format';
 import { hasSize } from '@/lib/sizes';
 
+// to_confirm = masih Pending tp buyer sudah bayar, tinggal Confirm Payment
 const FILTERS = [
   'all',
   'pending',
-  'waiting_verification',
-  'paid',
+  'to_confirm',
   'processing',
   'shipped',
   'completed',
   'cancelled',
 ];
+
+// pilihan urutan pesanan di Incoming Orders
+const ORDER_SORTS = {
+  newest: { label: 'Newest', sql: 'o.created_at DESC' },
+  oldest: { label: 'Oldest', sql: 'o.created_at ASC' },
+  total_desc: { label: 'Total: High to Low', sql: 'o.total_harga DESC, o.created_at DESC' },
+  total_asc: { label: 'Total: Low to High', sql: 'o.total_harga ASC, o.created_at DESC' },
+};
+
+const selectClass =
+  'w-full px-3 py-2.5 text-sm bg-white border border-neutral-300 rounded-xl focus:outline-none focus:border-neutral-900';
 
 // cek filter status trs tampilkan daftar pesanan masuk untuk toko seller
 export default async function SellerOrdersPage({ searchParams }) {
@@ -30,10 +41,18 @@ export default async function SellerOrdersPage({ searchParams }) {
     activeFilter = 'all';
   }
 
+  let sortKey = 'newest';
+  if (resolvedSearchParams && typeof resolvedSearchParams.sort === 'string') {
+    sortKey = resolvedSearchParams.sort;
+  }
+  if (!ORDER_SORTS[sortKey]) {
+    sortKey = 'newest';
+  }
+
   // ambil pesanan masuk ke toko jg info pembeli n barangnya
   let queryText = `
     SELECT o.id_order, o.total_harga, o.status_order, o.alamat_pengiriman, o.catatan, o.created_at,
-           o.bukti_pembayaran,
+           o.dibayar_pada,
            COALESCE(
              (SELECT JSON_AGG(JSON_BUILD_OBJECT('status', h.status_order, 'tanggal', h.created_at) ORDER BY h.created_at)
               FROM order_status_history h WHERE h.id_order = o.id_order),
@@ -53,11 +72,13 @@ export default async function SellerOrdersPage({ searchParams }) {
     WHERE o.id_store = $1`;
   const queryValues = [store.id_store];
 
-  if (activeFilter !== 'all') {
+  if (activeFilter === 'to_confirm') {
+    queryText += " AND o.status_order = 'pending' AND o.dibayar_pada IS NOT NULL";
+  } else if (activeFilter !== 'all') {
     queryValues.push(activeFilter);
     queryText += ` AND o.status_order = $${queryValues.length}`;
   }
-  queryText += ' GROUP BY o.id_order, u.nama, u.email ORDER BY o.created_at DESC';
+  queryText += ` GROUP BY o.id_order, u.nama, u.email ORDER BY ${ORDER_SORTS[sortKey].sql}`;
 
   const resOrders = await pool.query(queryText, queryValues);
   const orders = resOrders.rows;
@@ -147,7 +168,7 @@ export default async function SellerOrdersPage({ searchParams }) {
                 <OrderStatusPanel
                   idOrder={orderItem.id_order}
                   status={orderItem.status_order}
-                  paymentProof={orderItem.bukti_pembayaran}
+                  paidAt={orderItem.dibayar_pada}
                   history={orderItem.riwayat}
                   createdAt={orderItem.created_at}
                 />
@@ -166,35 +187,57 @@ export default async function SellerOrdersPage({ searchParams }) {
         description="Orders for products from your store."
       />
 
-      <div className="flex gap-2 overflow-x-auto mb-4 p-2 bg-white rounded-2xl border border-neutral-200/80 shadow-sm">
-        {FILTERS.map(function buildOrderFilterLink(filterKey) {
-          let filterHref = `/seller/orders?status=${filterKey}`;
-          if (filterKey === 'all') {
-            filterHref = '/seller/orders';
-          }
-
-          let filterLabel = 'All';
-          if (filterKey !== 'all') {
-            filterLabel = ORDER_STATUS[filterKey].label;
-          }
-
-          let filterLinkClass =
-            'bg-(--abumuda) text-neutral-950 border-transparent hover:border-neutral-400';
-          if (activeFilter === filterKey) {
-            filterLinkClass = 'bg-neutral-900 text-white border-neutral-900';
-          }
-
-          return (
-            <Link
-              key={filterKey}
-              href={filterHref}
-              className={`shrink-0 px-4 py-2 text-xs font-medium rounded-full border transition ${filterLinkClass}`}
-            >
-              {filterLabel}
-            </Link>
-          );
-        })}
-      </div>
+      {/* filter status pakai dropdown (tab-nya terlalu banyak) + urutan pesanan */}
+      <form
+        action="/seller/orders"
+        method="GET"
+        className="mb-4 p-4 bg-white rounded-2xl border border-neutral-200/80 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[240px_240px_auto] gap-3 items-end"
+      >
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-950 mb-1">Status</span>
+          <select name="status" defaultValue={activeFilter} className={selectClass}>
+            {FILTERS.map(function buildStatusOption(filterKey) {
+              let filterLabel = 'All';
+              if (filterKey === 'to_confirm') {
+                filterLabel = 'Paid — Needs Confirmation';
+              } else if (filterKey !== 'all') {
+                filterLabel = ORDER_STATUS[filterKey].label;
+              }
+              return (
+                <option key={filterKey} value={filterKey}>
+                  {filterLabel}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-neutral-950 mb-1">Sort by</span>
+          <select name="sort" defaultValue={sortKey} className={selectClass}>
+            {Object.keys(ORDER_SORTS).map(function buildSortOption(optionKey) {
+              return (
+                <option key={optionKey} value={optionKey}>
+                  {ORDER_SORTS[optionKey].label}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="px-4 py-2.5 text-sm font-medium bg-neutral-950 text-white rounded-xl hover:bg-neutral-800 transition cursor-pointer"
+          >
+            Apply
+          </button>
+          <Link
+            href="/seller/orders"
+            className="px-4 py-2.5 text-sm font-medium bg-white border border-neutral-300 text-neutral-950 rounded-xl hover:border-neutral-900 transition"
+          >
+            Reset Filter
+          </Link>
+        </div>
+      </form>
 
       {ordersListContent}
     </div>
