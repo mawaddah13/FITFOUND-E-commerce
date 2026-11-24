@@ -2,12 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { withTransaction } from '@/lib/db';
-import { getShopperUser, getActiveSeller } from '@/lib/auth';
+import pool, { withTransaction } from '@/lib/db';
+import { getBuyerUser, getActiveSeller, getUserWithRole } from '@/lib/auth';
 import { getString, toPositiveInt, isValidPhone } from '@/lib/validation';
 import { SELLER_STATUS_FLOW, ORDER_STATUS } from '@/lib/format';
 import { sizeSuffix } from '@/lib/sizes';
 import { activeAccountSql } from '@/lib/products';
+import { hasUploadedFile, validateImageFile, saveImageFile, deleteUploadedImage } from '@/lib/upload';
 
 class CheckoutError extends Error {}
 
@@ -59,7 +60,7 @@ function formatAddress(addr) {
 
 // proses checkout item terpilih, buat order pertoko, n kurangi stok
 export async function checkoutAction(prevState, formData) {
-  const user = await getShopperUser();
+  const user = await getBuyerUser();
   if (!user) {
     return { error: 'Your session has expired. Please sign in again.' };
   }
@@ -239,10 +240,6 @@ export async function checkoutAction(prevState, formData) {
           return cartItem.id_store === ownStoreId;
         });
 
-        if (ownStoreItem && isBuyNow) {
-          throw new CheckoutError('You cannot buy products from your own store.');
-        }
-
         if (ownStoreItem) {
           throw new CheckoutError(
             `"${ownStoreItem.nama_produk}" is from your own store. Please remove it from your cart.`
@@ -333,6 +330,7 @@ export async function checkoutAction(prevState, formData) {
           ]
         );
         const orderId = orderResult.rows[0].id_order;
+        await addStatusHistory(dbClient, orderId, 'pending');
 
         for (const groupItem of groupData.items) {
           await dbClient.query(
@@ -388,7 +386,7 @@ export async function checkoutAction(prevState, formData) {
 // batalkan pesanan yang masih menunggu pembayaran lalu kembalikan stok
 export async function cancelOrderByBuyerAction(rawOrderId, prevState, formData) {
   const orderId = toPositiveInt(rawOrderId);
-  const user = await getShopperUser();
+  const user = await getBuyerUser();
   if (!user || !orderId) {
     return { error: 'You are not allowed to perform this action.' };
   }
@@ -413,6 +411,7 @@ export async function cancelOrderByBuyerAction(rawOrderId, prevState, formData) 
         "UPDATE orders SET updated_at = CURRENT_TIMESTAMP, status_order = 'cancelled' WHERE id_order = $1",
         [orderId]
       );
+      await addStatusHistory(dbClient, orderId, 'cancelled');
     });
   } catch (error) {
     if (error instanceof CheckoutError) {
@@ -426,10 +425,62 @@ export async function cancelOrderByBuyerAction(rawOrderId, prevState, formData) 
   return { success: 'Order has been cancelled.' };
 }
 
+// buyer kirim foto bukti pembayaran, status jadi menunggu verifikasi pembayaran oleh seller
+export async function uploadPaymentProofAction(rawOrderId, prevState, formData) {
+  const orderId = toPositiveInt(rawOrderId);
+  const user = await getBuyerUser();
+  if (!user || !orderId) {
+    return { error: 'You are not allowed to perform this action.' };
+  }
+
+  const proofFile = formData.get('bukti_file');
+  if (!hasUploadedFile(proofFile)) {
+    return { error: 'Please choose a photo of your payment proof.' };
+  }
+
+  const fileError = validateImageFile(proofFile);
+  if (fileError) {
+    return { error: fileError };
+  }
+
+  const orderResult = await pool.query(
+    'SELECT status_order, bukti_pembayaran FROM orders WHERE id_order = $1 AND id_user = $2',
+    [orderId, user.id_user]
+  );
+  if (orderResult.rows.length === 0) {
+    return { error: 'Order not found.' };
+  }
+  if (orderResult.rows[0].status_order !== 'pending') {
+    return { error: 'Payment proof can only be sent while the order is awaiting payment.' };
+  }
+
+  const oldProof = orderResult.rows[0].bukti_pembayaran;
+  const proofPath = await saveImageFile(proofFile, 'payments', `payment-order-${orderId}`);
+
+  await withTransaction(async function savePaymentProof(dbClient) {
+    await dbClient.query(
+      `UPDATE orders
+       SET updated_at = CURRENT_TIMESTAMP, bukti_pembayaran = $1, status_order = 'waiting_verification'
+       WHERE id_order = $2`,
+      [proofPath, orderId]
+    );
+    await addStatusHistory(dbClient, orderId, 'waiting_verification');
+  });
+
+  if (oldProof && oldProof !== proofPath) {
+    await deleteUploadedImage(oldProof);
+  }
+
+  revalidatePath('/buyer/orders');
+  revalidatePath(`/buyer/orders/${orderId}`);
+  revalidatePath('/seller/orders');
+  return { success: 'Payment proof sent. Please wait for the seller to verify your payment.' };
+}
+
 // konfirmasi pesanan terkirim menjadi selesai n perbarui jumlah terjual
 export async function confirmReceivedAction(rawOrderId, prevState, formData) {
   const orderId = toPositiveInt(rawOrderId);
-  const user = await getShopperUser();
+  const user = await getBuyerUser();
   if (!user || !orderId) {
     return { error: 'You are not allowed to perform this action.' };
   }
@@ -444,6 +495,7 @@ export async function confirmReceivedAction(rawOrderId, prevState, formData) {
 
     if (queryResult.rowCount > 0) {
       await addSoldCount(dbClient, orderId);
+      await addStatusHistory(dbClient, orderId, 'completed');
     }
 
     return queryResult;
@@ -458,14 +510,8 @@ export async function confirmReceivedAction(rawOrderId, prevState, formData) {
   return { success: 'Order completed. You can now review the products.' };
 }
 
-// cek transisi status trs perbarui status pesanan milik toko penjual
-export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
-  const orderId = toPositiveInt(rawOrderId);
-  const seller = await getActiveSeller();
-  if (!seller || !orderId) {
-    return { error: 'You are not allowed to perform this action.' };
-  }
-
+// cek transisi status n simpan status pesanan baru (storeId null = toko mana pun, khusus admin)
+async function changeOrderStatus(orderId, storeId, formData) {
   const nextStatus = getString(formData, 'status_order');
   if (!ORDER_STATUS[nextStatus]) {
     return { error: 'Please choose a valid status.' };
@@ -474,12 +520,17 @@ export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
   try {
     await withTransaction(async function runUpdateOrderStatus(dbClient) {
       const orderResult = await dbClient.query(
-        'SELECT status_order FROM orders WHERE id_order = $1 AND id_store = $2 FOR UPDATE',
-        [orderId, seller.store.id_store]
+        `SELECT status_order FROM orders
+         WHERE id_order = $1 AND ($2::int IS NULL OR id_store = $2::int)
+         FOR UPDATE`,
+        [orderId, storeId]
       );
 
       if (orderResult.rows.length === 0) {
-        throw new CheckoutError('Order not found in your store.');
+        if (storeId) {
+          throw new CheckoutError('Order not found in your store.');
+        }
+        throw new CheckoutError('Order not found.');
       }
 
       const currentStatus = orderResult.rows[0].status_order;
@@ -506,6 +557,7 @@ export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
         'UPDATE orders SET updated_at = CURRENT_TIMESTAMP, status_order = $1 WHERE id_order = $2',
         [nextStatus, orderId]
       );
+      await addStatusHistory(dbClient, orderId, nextStatus);
     });
   } catch (error) {
     if (error instanceof CheckoutError) {
@@ -514,9 +566,47 @@ export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
     throw error;
   }
 
+  return { success: `Order #${orderId} updated to "${ORDER_STATUS[nextStatus].label}".` };
+}
+
+// cek transisi status trs perbarui status pesanan milik toko penjual
+export async function updateOrderStatusAction(rawOrderId, prevState, formData) {
+  const orderId = toPositiveInt(rawOrderId);
+  const seller = await getActiveSeller();
+  if (!seller || !orderId) {
+    return { error: 'You are not allowed to perform this action.' };
+  }
+
+  const result = await changeOrderStatus(orderId, seller.store.id_store, formData);
+
   revalidatePath('/seller/orders');
   revalidatePath('/seller/dashboard');
-  return { success: `Order #${orderId} updated to "${ORDER_STATUS[nextStatus].label}".` };
+  revalidatePath('/admin/orders');
+  return result;
+}
+
+// admin bisa memperbarui status pesanan dari toko mana pun
+export async function adminUpdateOrderStatusAction(rawOrderId, prevState, formData) {
+  const orderId = toPositiveInt(rawOrderId);
+  const admin = await getUserWithRole('admin');
+  if (!admin || !orderId) {
+    return { error: 'Only Admin can do this. Please sign in again.' };
+  }
+
+  const result = await changeOrderStatus(orderId, null, formData);
+
+  revalidatePath('/admin/orders');
+  revalidatePath('/seller/orders');
+  revalidatePath('/seller/dashboard');
+  return result;
+}
+
+// catat tanggal setiap perubahan status pesanan (dipakai buat tanggal di tiap tahapan)
+async function addStatusHistory(dbClient, orderId, statusName) {
+  await dbClient.query(
+    'INSERT INTO order_status_history (id_order, status_order) VALUES ($1, $2)',
+    [orderId, statusName]
+  );
 }
 
 // kembalikan stok ukuran n hitung ulang total stok produk saat order dibatalkan
