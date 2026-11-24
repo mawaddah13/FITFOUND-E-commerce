@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { jsonError } from '@/lib/api';
 import { toPositiveInt } from '@/lib/validation';
+import { activeAccountSql } from '@/lib/products';
 
 // cek id produk buat ambil ringkasan produk beserta daftar ukuran n stoknya
 export async function GET(request, { params }) {
@@ -14,9 +15,12 @@ export async function GET(request, { params }) {
 
   try {
     const productResult = await pool.query(
-      `SELECT id_product, nama_produk, harga, gambar, stok
-       FROM products
-       WHERE id_product = $1`,
+      `SELECT p.id_product, p.nama_produk, p.harga, p.gambar, p.stok
+       FROM products p
+       JOIN stores s ON s.id_store = p.id_store
+       JOIN users su ON su.id_user = s.id_user
+         AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
+       WHERE p.id_product = $1`,
       [productId]
     );
     if (productResult.rows.length === 0) {

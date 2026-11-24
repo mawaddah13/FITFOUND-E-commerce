@@ -1,6 +1,7 @@
 import pool from '@/lib/db';
 import { requireBuyerPage } from '@/lib/auth';
 import CartView from '@/components/CartView';
+import { activeAccountSql } from '@/lib/products';
 import { PageHeader, EmptyState } from '@/components/ui';
 
 // tmpilkan isi keranjang, alamat, status toko trs tampilkan halaman keranjang
@@ -10,26 +11,20 @@ export default async function CartPage() {
   // ambil semua item di keranjang user, info produk, ukuran, stok per ukuran, n toko
   const resCartItems = await pool.query(
     `SELECT ci.id_cart_item, ci.id_product, ci.ukuran, ci.jumlah,
-            p.nama_produk, p.harga, COALESCE(ps.stok, 0) AS stok, p.gambar, s.id_store, s.nama_toko
+            p.nama_produk, p.harga, COALESCE(ps.stok, 0) AS stok, p.gambar, s.id_store, s.nama_toko,
+            (su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
+             ) AS tersedia
      FROM carts c
      JOIN cart_items ci ON ci.id_cart = c.id_cart
      JOIN products p ON p.id_product = ci.id_product
      JOIN stores s ON s.id_store = p.id_store
+     JOIN users su ON su.id_user = s.id_user
      LEFT JOIN product_sizes ps ON ps.id_product = ci.id_product AND ps.ukuran = ci.ukuran
      WHERE c.id_user = $1
      ORDER BY s.nama_toko ASC, ci.created_at DESC`,
     [user.id_user]
   );
   const items = resCartItems.rows;
-
-  // ambil daftar alamat tersimpan user, alamat utama ditaruh paling atas
-  const resAddresses = await pool.query(
-    `SELECT id_address, label, nama_penerima, no_hp, alamat_lengkap, kota, kode_pos, is_default
-     FROM addresses WHERE id_user = $1
-     ORDER BY is_default DESC, created_at DESC`,
-    [user.id_user]
-  );
-  const addresses = resAddresses.rows;
 
   if (items.length === 0) {
     return (
@@ -68,12 +63,7 @@ export default async function CartPage() {
     <div>
       <PageHeader title="Shopping Cart" description={cartSummaryDescription} />
 
-      <CartView
-        items={items}
-        addresses={addresses}
-        user={user}
-        ownStoreId={ownStoreId}
-      />
+      <CartView items={items} ownStoreId={ownStoreId} />
     </div>
   );
 }

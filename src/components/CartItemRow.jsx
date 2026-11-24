@@ -126,7 +126,14 @@ export default function CartItemRow({ item }) {
   }
 
   let stockWarningBanner = null;
-  if (isOverStock) {
+  if (item.tersedia === false) {
+    // toko seller di-suspend / nonaktif: produk tidak bisa dibeli
+    stockWarningBanner = (
+      <p className="text-[11px] text-red-600">
+        This product is no longer available. Please remove it from your cart.
+      </p>
+    );
+  } else if (isOverStock) {
     if (item.stok <= 0) {
       stockWarningBanner = (
         <p className="text-[11px] text-red-600">
