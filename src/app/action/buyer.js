@@ -19,9 +19,10 @@ export async function updateProfileAction(prevState, formData) {
   const fullName = getString(formData, 'nama');
   const emailAddress = getString(formData, 'email').toLowerCase();
   const phoneNumber = getString(formData, 'no_hp');
+  const addressText = getString(formData, 'alamat');
 
-  if (fullName === '' || emailAddress === '' || phoneNumber === '') {
-    return { error: 'Name, email, and phone number are required.' };
+  if (fullName === '' || emailAddress === '' || phoneNumber === '' || addressText === '') {
+    return { error: 'Name, email, phone number, and address are required.' };
   }
 
   if (fullName.length < 3 || fullName.length > 100) {
@@ -36,6 +37,10 @@ export async function updateProfileAction(prevState, formData) {
     return { error: 'Phone number must be 8–20 digits.' };
   }
 
+  if (addressText.length < 10 || addressText.length > 500) {
+    return { error: 'Address must be 10–500 characters.' };
+  }
+
   const emailCheck = await pool.query(
     'SELECT id_user FROM users WHERE email = $1 AND id_user <> $2',
     [emailAddress, user.id_user]
@@ -45,11 +50,12 @@ export async function updateProfileAction(prevState, formData) {
   }
 
   await pool.query(
-    'UPDATE users SET updated_at = CURRENT_TIMESTAMP, nama = $1, email = $2, no_hp = $3 WHERE id_user = $4',
-    [fullName, emailAddress, phoneNumber, user.id_user]
+    'UPDATE users SET updated_at = CURRENT_TIMESTAMP, nama = $1, email = $2, no_hp = $3, alamat = $4 WHERE id_user = $5',
+    [fullName, emailAddress, phoneNumber, addressText, user.id_user]
   );
 
   revalidatePath('/buyer', 'layout');
+  revalidatePath('/seller', 'layout');
   return { success: 'Profile updated successfully.' };
 }
 
@@ -111,20 +117,14 @@ export async function changePasswordAction(prevState, formData) {
   return { success: 'Password changed successfully.' };
 }
 
-// cek batas alamat tersimpan trs tambahkan alamat pengiriman baru
-export async function createAddressAction(prevState, formData) {
-  const user = await getShopperUser();
-  if (!user) {
-    return NOT_ALLOWED;
-  }
-
+// baca n cek isian form alamat pengiriman (dipakai tambah n edit alamat)
+function readAddressForm(formData) {
   const addressLabel = getString(formData, 'label');
   const recipientName = getString(formData, 'nama_penerima');
   const phoneNumber = getString(formData, 'no_hp');
   const fullAddress = getString(formData, 'alamat_lengkap');
   const cityName = getString(formData, 'kota');
   const postalCode = getString(formData, 'kode_pos');
-  const setAsDefault = formData.get('is_default') === 'on';
 
   if (
     !addressLabel ||
@@ -152,6 +152,27 @@ export async function createAddressAction(prevState, formData) {
   if (!/^[0-9]{5}$/.test(postalCode)) {
     return { error: 'Postal code must be 5 digits.' };
   }
+
+  return {
+    address: { addressLabel, recipientName, phoneNumber, fullAddress, cityName, postalCode },
+  };
+}
+
+// cek batas alamat tersimpan trs tambahkan alamat pengiriman baru
+export async function createAddressAction(prevState, formData) {
+  const user = await getShopperUser();
+  if (!user) {
+    return NOT_ALLOWED;
+  }
+
+  const setAsDefault = formData.get('is_default') === 'on';
+  const addressResult = readAddressForm(formData);
+  if (addressResult.error) {
+    return { error: addressResult.error };
+  }
+
+  const { addressLabel, recipientName, phoneNumber, fullAddress, cityName, postalCode } =
+    addressResult.address;
 
   const countResult = await pool.query(
     'SELECT COUNT(*)::int AS total FROM addresses WHERE id_user = $1',
@@ -195,7 +216,43 @@ export async function createAddressAction(prevState, formData) {
   return { success: 'Address added.' };
 }
 
-// pastikan salah satu alamat tersimpan sebagai alamat utama
+// cek kepemilikan alamat trs simpan perubahan alamat pengiriman yg sudah tersimpan
+export async function updateAddressAction(rawAddressId, prevState, formData) {
+  const addressId = toPositiveInt(rawAddressId);
+  if (!addressId) {
+    return { error: 'Address is not valid.' };
+  }
+
+  const user = await getShopperUser();
+  if (!user) {
+    return NOT_ALLOWED;
+  }
+
+  const addressResult = readAddressForm(formData);
+  if (addressResult.error) {
+    return { error: addressResult.error };
+  }
+
+  const { addressLabel, recipientName, phoneNumber, fullAddress, cityName, postalCode } =
+    addressResult.address;
+
+  const updateResult = await pool.query(
+    `UPDATE addresses
+     SET updated_at = CURRENT_TIMESTAMP, label = $1, nama_penerima = $2, no_hp = $3,
+         alamat_lengkap = $4, kota = $5, kode_pos = $6
+     WHERE id_address = $7 AND id_user = $8`,
+    [addressLabel, recipientName, phoneNumber, fullAddress, cityName, postalCode, addressId, user.id_user]
+  );
+  if (updateResult.rowCount === 0) {
+    return { error: 'Address not found.' };
+  }
+
+  revalidatePath('/buyer/addresses');
+  revalidatePath('/buyer/cart');
+  return { success: 'Address updated.' };
+}
+
+// pastikan salah satu alamat tersimpan jadi alamat default
 export async function setDefaultAddressAction(rawAddressId, prevState, formData) {
   const addressId = toPositiveInt(rawAddressId);
   if (!addressId) {
@@ -225,7 +282,7 @@ export async function setDefaultAddressAction(rawAddressId, prevState, formData)
   return { success: 'Default address updated.' };
 }
 
-// hapus alamat tersimpan trs alihkan default kalau alamat utama terhapus
+// hapus alamat tersimpan trs alihkan default kalau alamat default terhapus
 export async function deleteAddressAction(rawAddressId, prevState, formData) {
   const addressId = toPositiveInt(rawAddressId);
   if (!addressId) {

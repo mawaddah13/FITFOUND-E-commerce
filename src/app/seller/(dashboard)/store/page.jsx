@@ -1,14 +1,25 @@
-import Link from 'next/link';
 import { requireSellerPage } from '@/lib/auth';
 import { updateStoreAction } from '@/app/action/seller';
+import { updateProfileAction, changePasswordAction } from '@/app/action/buyer';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import ImageInput from '@/components/ImageInput';
+import PasswordInput from '@/components/PasswordInput';
 import { PageHeader, Card, Field, inputClass } from '@/components/ui';
 
 // ambil data toko aktif lalu tampilkan formulir profil toko n pratinjaunya
 export default async function StorePage() {
-  const { store } = await requireSellerPage();
+  const { user, store } = await requireSellerPage();
+
+  let phoneDefaultValue = '';
+  if (user.no_hp) {
+    phoneDefaultValue = user.no_hp;
+  }
+
+  let addressDefaultValue = '';
+  if (user.alamat) {
+    addressDefaultValue = user.alamat;
+  }
 
   let currentImageValue = '';
   if (store.gambar_toko) {
@@ -39,8 +50,6 @@ export default async function StorePage() {
   if (store.deskripsi_toko) {
     previewDescriptionText = store.deskripsi_toko;
   }
-
-  const storePageHref = `/stores/${store.id_store}`;
 
   return (
     <div>
@@ -79,21 +88,6 @@ export default async function StorePage() {
                 className={inputClass}
               />
             </Field>
-            <label className="flex items-start gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer">
-              <input
-                type="checkbox"
-                name="sembunyikan_produk"
-                defaultChecked={store.sembunyikan_produk}
-                className="mt-0.5 w-4 h-4 accent-neutral-900"
-              />
-              <span>
-                <span className="block text-sm font-medium text-neutral-950">Hide Your Own Products</span>
-                <span className="block text-[11px] text-neutral-950 mt-0.5">
-                  When you shop on FITFOUND, products from your store are hidden from Home, All Products,
-                  Best Sellers, and search. You can’t buy your own products anyway.
-                </span>
-              </span>
-            </label>
             <SubmitButton>Save Store Profile</SubmitButton>
           </ActionForm>
         </Card>
@@ -105,12 +99,91 @@ export default async function StorePage() {
           {previewAvatarElement}
           <p className="mt-4 text-base font-semibold">{store.nama_toko}</p>
           <p className="text-xs text-neutral-500 mt-1">{previewDescriptionText}</p>
-          <Link
-            href={storePageHref}
-            className="mt-4 inline-block text-xs font-medium underline underline-offset-4 text-neutral-700 hover:text-neutral-950"
-          >
-            View my store page
-          </Link>
+        </Card>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <Card>
+          <h3 className="text-base font-semibold mb-4">Account Information</h3>
+          <ActionForm action={updateProfileAction} className="space-y-4">
+            <Field label="Full Name" htmlFor="nama">
+              <input
+                id="nama"
+                name="nama"
+                required
+                minLength={3}
+                maxLength={100}
+                defaultValue={user.nama}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Email" htmlFor="email">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                defaultValue={user.email}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Phone Number" htmlFor="no_hp">
+              <input
+                id="no_hp"
+                name="no_hp"
+                type="tel"
+                required
+                defaultValue={phoneDefaultValue}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Address" htmlFor="alamat" hint="Street, city, and postal code.">
+              <textarea
+                id="alamat"
+                name="alamat"
+                rows={2}
+                required
+                minLength={10}
+                maxLength={500}
+                defaultValue={addressDefaultValue}
+                className={inputClass}
+              />
+            </Field>
+            <SubmitButton>Save Account</SubmitButton>
+          </ActionForm>
+        </Card>
+
+        <Card>
+          <h3 className="text-base font-semibold mb-4">Change Password</h3>
+          <ActionForm action={changePasswordAction} resetOnSuccess className="space-y-4">
+            <Field label="Current Password" htmlFor="current_password">
+              <PasswordInput
+                id="current_password"
+                name="current_password"
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field label="New Password" htmlFor="new_password" hint="Minimum 6 characters.">
+              <PasswordInput
+                id="new_password"
+                name="new_password"
+                required
+                minLength={6}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Confirm New Password" htmlFor="confirm_password">
+              <PasswordInput
+                id="confirm_password"
+                name="confirm_password"
+                required
+                minLength={6}
+                className={inputClass}
+              />
+            </Field>
+            <SubmitButton variant="dark">Change Password</SubmitButton>
+          </ActionForm>
         </Card>
       </div>
     </div>
