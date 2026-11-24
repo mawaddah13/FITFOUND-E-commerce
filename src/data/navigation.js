@@ -59,7 +59,6 @@ export function buildSubMenu(categories) {
   const hasAccessories = categories.some((category) => category.grup_kategori === 'Accessories');
 
   const menu = [
-    { label: 'Best Sellers', value: 'best-sellers', isSpecialLink: true, href: '/best-sellers' },
     { label: 'All Products', value: 'all-products', isSpecialLink: true, href: '/products' },
   ];
   for (const category of mainCategories) {

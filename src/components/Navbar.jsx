@@ -78,12 +78,10 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [desktopAccessoriesOpen, setDesktopAccessoriesOpen] = useState(false);
   const [mobileAccessoriesOpen, setMobileAccessoriesOpen] = useState(false);
   const [drawerSegment, setDrawerSegment] = useState(activeSegment);
 
   const mobileInputRef = useRef(null);
-  const desktopDropdownRef = useRef(null);
   const scrollTopAfterNavRef = useRef(false);
 
   const subMenu = buildSubMenu(categories);
@@ -129,11 +127,10 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     return { href: buildCategoryHref(segment, cat.value), isActive: isKategoriActive(cat.value) };
   }
 
-  // tutup menu drawer, pencarian mobile, n dropdown accessories
+  // tutup menu drawer n pencarian mobile
   function closeAllMenus() {
     setMobileMenuOpen(false);
     setMobileSearchOpen(false);
-    setDesktopAccessoriesOpen(false);
   }
 
   // buka/tutup drawer menu tampilan mobile
@@ -157,17 +154,6 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
       mobileInputRef.current.focus();
     }
   }, [mobileSearchOpen]);
-
-  // lihat klik di luar dropdown accessories desktop spy tertutup otomatis
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (desktopDropdownRef.current && !desktopDropdownRef.current.contains(event.target)) {
-        setDesktopAccessoriesOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // proses pencarian n arahkan ke katalog
   function handleSearchSubmit(event) {
@@ -255,6 +241,47 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
       }
       return renderNavLink(buildCategoryHref(segment, name), label, pick(isKategoriActive(name), classOn, classOff));
     });
+  }
+
+  // menu utama desktop: Home, All Products, Women, Men, Kids
+  const desktopNavItems = [];
+  for (const item of MAIN_SEGMENTS) {
+    let isActive = isCatalogPage && activeSegment.toLowerCase() === item.value.toLowerCase();
+    if (item.value === '' && pathname === '/products') {
+      isActive = false;
+    }
+    desktopNavItems.push({ href: buildCategoryHref(item.value, ''), label: item.label, isActive });
+    if (item.value === '') {
+      desktopNavItems.push({
+        href: '/products',
+        label: 'All Products',
+        isActive: pathname === '/products' && activeKategori === '' && activeSegment === '',
+      });
+    }
+  }
+
+  // tab segmen mobile (Home, Women, Men, Kids); saat menu hamburger terbuka tab dipakai pilih segmen
+  function renderSegmentTab(item) {
+    const segment = pick(mobileMenuOpen, drawerSegment, activeSegment);
+    let isActive = (mobileMenuOpen || isCatalogPage) && segment.toLowerCase() === item.value.toLowerCase();
+    // Home tidak ikut aktif waktu lagi di All Products
+    if (item.value === '' && pathname === '/products' && !mobileMenuOpen) {
+      isActive = false;
+    }
+    const tabClass = `px-2 py-3 whitespace-nowrap transition cursor-pointer ${pick(
+      isActive,
+      'font-bold text-neutral-950 border-b-2 border-neutral-950',
+      'font-medium text-neutral-600 hover:text-neutral-950'
+    )}`;
+
+    if (mobileMenuOpen) {
+      return (
+        <button key={item.label} type="button" onClick={() => setDrawerSegment(item.value)} className={tabClass}>
+          {item.label}
+        </button>
+      );
+    }
+    return renderNavLink(buildCategoryHref(item.value, ''), item.label, tabClass);
   }
 
   let mobileDrawer = null;
@@ -377,14 +404,14 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
           <div className="flex-1 flex justify-center md:flex-none md:justify-start items-center gap-8">
             <Logo href="/" scroll={false} onClick={() => handleNavClick('/')} />
 
+            {/* baris kedua (Best Sellers, All Products, Tops, dst) dihapus, All Products pindah ke sini diapit Home n Women */}
             <nav className="hidden md:flex items-center gap-8 text-base font-medium text-neutral-600">
-              {MAIN_SEGMENTS.map((item) => {
-                const isActive = isCatalogPage && activeSegment.toLowerCase() === item.value.toLowerCase();
+              {desktopNavItems.map((item) => {
                 return renderNavLink(
-                  buildCategoryHref(item.value, ''),
+                  item.href,
                   item.label,
-                  `link-underline transition-colors duration-200 ${pick(isActive, 'font-semibold text-neutral-950', 'hover:text-neutral-950')}`,
-                  { 'data-active': pick(isActive, 'true', 'false') }
+                  `link-underline transition-colors duration-200 ${pick(item.isActive, 'font-semibold text-neutral-950', 'hover:text-neutral-950')}`,
+                  { 'data-active': pick(item.isActive, 'true', 'false') }
                 );
               })}
             </nav>
@@ -458,73 +485,21 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
           </div>
         </div>
 
-        <nav className="md:hidden grid grid-cols-4 border-t border-neutral-200/70 bg-(--abumuda) text-center text-sm tracking-wider uppercase">
-          {MAIN_SEGMENTS.map((item) => {
-            const segment = pick(mobileMenuOpen, drawerSegment, activeSegment);
-            const isActive = (mobileMenuOpen || isCatalogPage) && segment.toLowerCase() === item.value.toLowerCase();
-            const tabClass = `w-full py-3 transition cursor-pointer ${pick(
-              isActive,
+        {/* warna tulisan tab dibuat lebih gelap (sama dgn desktop) + tab All Products */}
+        <nav className="md:hidden flex justify-between px-2 border-t border-neutral-200/70 bg-(--abumuda) text-center text-[13px] tracking-wide uppercase">
+          {/* urutan tab: Home, All Products, Women, Men, Kids */}
+          {renderSegmentTab(MAIN_SEGMENTS[0])}
+          {renderNavLink(
+            '/products',
+            'All Products',
+            `px-2 py-3 whitespace-nowrap transition cursor-pointer ${pick(
+              pathname === '/products' && activeKategori === '' && !mobileMenuOpen,
               'font-bold text-neutral-950 border-b-2 border-neutral-950',
-              'font-medium text-neutral-400 hover:text-neutral-800'
-            )}`;
-
-            if (mobileMenuOpen) {
-              return (
-                <button key={item.label} type="button" onClick={() => setDrawerSegment(item.value)} className={tabClass}>
-                  {item.label}
-                </button>
-              );
-            }
-            return renderNavLink(buildCategoryHref(item.value, ''), item.label, tabClass);
-          })}
+              'font-medium text-neutral-600 hover:text-neutral-950'
+            )}`
+          )}
+          {MAIN_SEGMENTS.slice(1).map(renderSegmentTab)}
         </nav>
-
-        <div className="hidden md:block border-t border-neutral-200/70 bg-(--abumuda)">
-          <div className="max-w-7xl mx-auto px-8 py-3 flex items-center justify-center gap-8 text-sm text-neutral-600">
-            {subMenu.map((cat) => {
-              if (cat.hasDropdown) {
-                return (
-                  <div key={cat.label} ref={desktopDropdownRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setDesktopAccessoriesOpen(!desktopAccessoriesOpen)}
-                      className={`inline-flex items-center gap-1.5 transition cursor-pointer ${pick(
-                        isAccessoriesActive || desktopAccessoriesOpen,
-                        'font-semibold text-neutral-950',
-                        'hover:text-neutral-950'
-                      )}`}
-                    >
-                      <span className="link-underline" data-active={pick(isAccessoriesActive, 'true', 'false')}>
-                        {cat.label}
-                      </span>
-                      <FiChevronDown
-                        className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${pick(desktopAccessoriesOpen, 'rotate-180', '')}`}
-                        aria-hidden="true"
-                      />
-                    </button>
-                    {desktopAccessoriesOpen && (
-                      <div className="absolute left-0 top-full mt-2.5 w-48 bg-white border border-neutral-200 rounded-xl shadow-lg py-2 z-50 animate-dropdown">
-                        {renderAccessoryLinks(
-                          activeSegment,
-                          'block px-4 py-2 text-sm transition font-semibold text-neutral-950 bg-(--abumuda) underline underline-offset-4',
-                          'block px-4 py-2 text-sm transition text-neutral-600 hover:text-neutral-950 hover:bg-(--abumuda)'
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              const { href, isActive } = menuTarget(cat, activeSegment);
-              return renderNavLink(
-                href,
-                cat.label,
-                `link-underline transition-colors duration-200 ${pick(isActive, 'font-semibold text-neutral-950', 'hover:text-neutral-950')}`,
-                { 'data-active': pick(isActive, 'true', 'false') }
-              );
-            })}
-          </div>
-        </div>
 
         {mobileSearchOpen && (
           <div className="md:hidden absolute left-0 right-0 top-full bg-(--abumuda) px-4 py-3 border-b border-neutral-200 shadow-lg z-50 animate-dropdown">
