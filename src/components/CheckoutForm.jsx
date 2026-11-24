@@ -12,7 +12,8 @@ const inputClass =
 const MAX_SAVED_ADDRESSES = 2;
 
 // tmpil form checkout utk pilih atau isi alamat pengiriman n catatan pesanan
-export default function CheckoutForm({ addresses, user, selectedIds = [], disabled = false }) {
+// buyNow diisi kalau checkout dari tombol Buy Now (produk tidak lewat keranjang)
+export default function CheckoutForm({ addresses, user, selectedIds = [], buyNow = null, disabled = false }) {
   const hasSaved = addresses.length > 0;
 
   let initialMode = 'new';
@@ -182,14 +183,32 @@ export default function CheckoutForm({ addresses, user, selectedIds = [], disabl
     selectedCountSuffix = ` (${selectedIds.length})`;
   }
 
+  let itemInputs = null;
+  if (buyNow) {
+    itemInputs = (
+      <>
+        <input type="hidden" name="buy_product" value={buyNow.productId} />
+        <input type="hidden" name="buy_size" value={buyNow.size} />
+        <input type="hidden" name="buy_qty" value={buyNow.qty} />
+      </>
+    );
+  } else {
+    itemInputs = selectedIds.map(function buildSelectedIdInput(selectedId) {
+      return <input key={selectedId} type="hidden" name="cart_item" value={selectedId} />;
+    });
+  }
+
+  let submitLabel = `Checkout${selectedCountSuffix}`;
+  if (buyNow) {
+    submitLabel = 'Place Order';
+  }
+
   const isSavedTabDisabled = !hasSaved;
 
   return (
     <ActionForm action={checkoutAction} className="mt-5 space-y-4">
       <input type="hidden" name="address_mode" value={mode} />
-      {selectedIds.map(function buildSelectedIdInput(selectedId) {
-        return <input key={selectedId} type="hidden" name="cart_item" value={selectedId} />;
-      })}
+      {itemInputs}
 
       <div>
         <p className="text-sm font-medium text-neutral-800 mb-2">Shipping address</p>
@@ -219,7 +238,7 @@ export default function CheckoutForm({ addresses, user, selectedIds = [], disabl
       </div>
 
       <SubmitButton pendingText="Processing..." className="w-full" disabled={disabled}>
-        Checkout{selectedCountSuffix}
+        {submitLabel}
       </SubmitButton>
       <p className="text-[11px] text-neutral-400">
         Orders are created per store with status “Awaiting Payment”. No payment gateway is required.

@@ -93,6 +93,19 @@ export async function checkoutAction(prevState, formData) {
     return { error: 'Order note must be at most 300 characters.' };
   }
 
+  // buy now: produk dikirim langsung dari halaman produk, bukan dari keranjang
+  const buyProductId = toPositiveInt(formData.get('buy_product'));
+  const isBuyNow = Boolean(buyProductId);
+  let buySize = '';
+  let buyQty = null;
+  if (isBuyNow) {
+    buySize = getString(formData, 'buy_size');
+    buyQty = toPositiveInt(formData.get('buy_qty'));
+    if (buySize === '' || !buyQty) {
+      return { error: 'Please choose a size and quantity first.' };
+    }
+  }
+
   const rawSelectedIds = formData.getAll('cart_item');
   const uniqueIdSet = new Set();
   for (const rawId of rawSelectedIds) {
@@ -103,7 +116,7 @@ export async function checkoutAction(prevState, formData) {
   }
   const selectedIds = Array.from(uniqueIdSet);
 
-  if (selectedIds.length === 0) {
+  if (!isBuyNow && selectedIds.length === 0) {
     return { error: 'Please select at least one item to checkout.' };
   }
 
@@ -165,32 +178,55 @@ export async function checkoutAction(prevState, formData) {
         }
       }
 
-      const itemsResult = await dbClient.query(
-        `SELECT ci.id_cart_item, ci.id_product, ci.ukuran, ci.jumlah,
-                p.nama_produk, p.harga, p.gambar,
-                s.id_store, s.nama_toko
-         FROM carts c
-         JOIN cart_items ci ON ci.id_cart = c.id_cart
-         JOIN products p ON p.id_product = ci.id_product
-         JOIN stores s ON s.id_store = p.id_store
-         JOIN users su ON su.id_user = s.id_user
-           AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
-         WHERE c.id_user = $1
-           AND ci.id_cart_item = ANY($2::int[])
-         ORDER BY s.id_store
-         FOR UPDATE OF p`,
-        [user.id_user, selectedIds]
-      );
-      const cartItems = itemsResult.rows;
+      let cartItems = [];
 
-      if (cartItems.length === 0) {
-        throw new CheckoutError('The selected items are no longer in your cart.');
-      }
-
-      if (cartItems.length !== selectedIds.length) {
-        throw new CheckoutError(
-          'Some selected items are no longer available (removed, or the store is inactive). Please untick them and try again.'
+      if (isBuyNow) {
+        // ambil 1 produk buy now langsung dari tabel produk, keranjang tidak disentuh
+        const buyNowResult = await dbClient.query(
+          `SELECT NULL::int AS id_cart_item, p.id_product, $2::varchar AS ukuran, $3::int AS jumlah,
+                  p.nama_produk, p.harga, p.gambar,
+                  s.id_store, s.nama_toko
+           FROM products p
+           JOIN stores s ON s.id_store = p.id_store
+           JOIN users su ON su.id_user = s.id_user
+             AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
+           WHERE p.id_product = $1
+           FOR UPDATE OF p`,
+          [buyProductId, buySize, buyQty]
         );
+        cartItems = buyNowResult.rows;
+
+        if (cartItems.length === 0) {
+          throw new CheckoutError('This product is no longer available.');
+        }
+      } else {
+        const itemsResult = await dbClient.query(
+          `SELECT ci.id_cart_item, ci.id_product, ci.ukuran, ci.jumlah,
+                  p.nama_produk, p.harga, p.gambar,
+                  s.id_store, s.nama_toko
+           FROM carts c
+           JOIN cart_items ci ON ci.id_cart = c.id_cart
+           JOIN products p ON p.id_product = ci.id_product
+           JOIN stores s ON s.id_store = p.id_store
+           JOIN users su ON su.id_user = s.id_user
+             AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
+           WHERE c.id_user = $1
+             AND ci.id_cart_item = ANY($2::int[])
+           ORDER BY s.id_store
+           FOR UPDATE OF p`,
+          [user.id_user, selectedIds]
+        );
+        cartItems = itemsResult.rows;
+
+        if (cartItems.length === 0) {
+          throw new CheckoutError('The selected items are no longer in your cart.');
+        }
+
+        if (cartItems.length !== selectedIds.length) {
+          throw new CheckoutError(
+            'Some selected items are no longer available (removed, or the store is inactive). Please untick them and try again.'
+          );
+        }
       }
 
       const ownStoreResult = await dbClient.query(
@@ -202,6 +238,10 @@ export async function checkoutAction(prevState, formData) {
         const ownStoreItem = cartItems.find(function findOwnItem(cartItem) {
           return cartItem.id_store === ownStoreId;
         });
+
+        if (ownStoreItem && isBuyNow) {
+          throw new CheckoutError('You cannot buy products from your own store.');
+        }
 
         if (ownStoreItem) {
           throw new CheckoutError(
@@ -232,9 +272,21 @@ export async function checkoutAction(prevState, formData) {
           availableStock = sizeStockMap[keyName];
         }
 
+        if (availableStock <= 0 && isBuyNow) {
+          throw new CheckoutError(
+            `"${cartItem.nama_produk}"${sizeSuffix(cartItem.ukuran)} is out of stock.`
+          );
+        }
+
         if (availableStock <= 0) {
           throw new CheckoutError(
             `"${cartItem.nama_produk}"${sizeSuffix(cartItem.ukuran)} is out of stock. Please remove it from your cart.`
+          );
+        }
+
+        if (cartItem.jumlah > availableStock && isBuyNow) {
+          throw new CheckoutError(
+            `Only ${availableStock} left for "${cartItem.nama_produk}"${sizeSuffix(cartItem.ukuran)}. Please choose a smaller quantity.`
           );
         }
 
@@ -309,12 +361,15 @@ export async function checkoutAction(prevState, formData) {
         orderCount += 1;
       }
 
-      await dbClient.query(
-        `DELETE FROM cart_items
-         WHERE id_cart = (SELECT id_cart FROM carts WHERE id_user = $1)
-           AND id_cart_item = ANY($2::int[])`,
-        [user.id_user, selectedIds]
-      );
+      // hanya item keranjang yg dicentang yg dihapus, buy now tidak menghapus isi keranjang
+      if (!isBuyNow) {
+        await dbClient.query(
+          `DELETE FROM cart_items
+           WHERE id_cart = (SELECT id_cart FROM carts WHERE id_user = $1)
+             AND id_cart_item = ANY($2::int[])`,
+          [user.id_user, selectedIds]
+        );
+      }
 
       return orderCount;
     });
