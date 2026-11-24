@@ -13,7 +13,15 @@ const MAX_SAVED_ADDRESSES = 2;
 
 // tmpil form checkout utk pilih atau isi alamat pengiriman n catatan pesanan
 // buyNow diisi kalau checkout dari tombol Buy Now (produk tidak lewat keranjang)
-export default function CheckoutForm({ addresses, user, selectedIds = [], buyNow = null, disabled = false }) {
+export default function CheckoutForm({
+  addresses,
+  user,
+  selectedIds = [],
+  buyNow = null,
+  totalText = '',
+  itemCount = 0,
+  disabled = false,
+}) {
   const hasSaved = addresses.length > 0;
 
   let initialMode = 'new';
@@ -178,11 +186,6 @@ export default function CheckoutForm({ addresses, user, selectedIds = [], buyNow
     );
   }
 
-  let selectedCountSuffix = '';
-  if (selectedIds.length > 0) {
-    selectedCountSuffix = ` (${selectedIds.length})`;
-  }
-
   let itemInputs = null;
   if (buyNow) {
     itemInputs = (
@@ -198,10 +201,7 @@ export default function CheckoutForm({ addresses, user, selectedIds = [], buyNow
     });
   }
 
-  let submitLabel = `Checkout${selectedCountSuffix}`;
-  if (buyNow) {
-    submitLabel = 'Place Order';
-  }
+  const submitLabel = 'Order Now';
 
   const isSavedTabDisabled = !hasSaved;
 
@@ -237,12 +237,24 @@ export default function CheckoutForm({ addresses, user, selectedIds = [], buyNow
         <textarea id="catatan" name="catatan" rows={2} maxLength={300} className={inputClass} />
       </div>
 
-      <SubmitButton pendingText="Processing..." className="w-full" disabled={disabled}>
-        {submitLabel}
-      </SubmitButton>
       <p className="text-[11px] text-neutral-400">
         Orders are created per store with status “Awaiting Payment”. No payment gateway is required.
       </p>
+
+      {/* total pembayaran n tombol Order Now mengambang di bawah layar */}
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-neutral-200 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.25)]">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-4">
+          <div className="min-w-0 text-sm text-neutral-950">
+            <p>
+              Items: <span className="font-semibold">{itemCount}</span> · Shipping: Free
+            </p>
+            <p className="text-base font-bold">Total Payment {totalText}</p>
+          </div>
+          <SubmitButton pendingText="Processing..." className="shrink-0 px-6" disabled={disabled}>
+            {submitLabel}
+          </SubmitButton>
+        </div>
+      </div>
     </ActionForm>
   );
 }
