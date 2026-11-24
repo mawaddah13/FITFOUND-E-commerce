@@ -5,6 +5,7 @@ import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import { PageHeader, Card, Field, StatCard, inputClass } from '@/components/ui';
 import { formatDate } from '@/lib/format';
+import PasswordInput from '@/components/PasswordInput';
 
 // muat statistik n data profil trs tampilkan halaman dashboard buyer
 export default async function BuyerDashboardPage() {
@@ -23,6 +24,11 @@ export default async function BuyerDashboardPage() {
   let phoneDefaultValue = '';
   if (user.no_hp) {
     phoneDefaultValue = user.no_hp;
+  }
+
+  let addressDefaultValue = '';
+  if (user.alamat) {
+    addressDefaultValue = user.alamat;
   }
 
   const memberDescription = `Member since ${formatDate(user.created_at)}`;
@@ -76,6 +82,18 @@ export default async function BuyerDashboardPage() {
                 className={inputClass}
               />
             </Field>
+            <Field label="Address" htmlFor="alamat" hint="Street, city, and postal code.">
+              <textarea
+                id="alamat"
+                name="alamat"
+                rows={2}
+                required
+                minLength={10}
+                maxLength={500}
+                defaultValue={addressDefaultValue}
+                className={inputClass}
+              />
+            </Field>
             <SubmitButton>Save Profile</SubmitButton>
           </ActionForm>
         </Card>
@@ -84,29 +102,26 @@ export default async function BuyerDashboardPage() {
           <h3 className="text-base font-semibold mb-4">Change Password</h3>
           <ActionForm action={changePasswordAction} resetOnSuccess className="space-y-4">
             <Field label="Current Password" htmlFor="current_password">
-              <input
+              <PasswordInput
                 id="current_password"
                 name="current_password"
-                type="password"
                 required
                 className={inputClass}
               />
             </Field>
             <Field label="New Password" htmlFor="new_password" hint="Minimum 6 characters.">
-              <input
+              <PasswordInput
                 id="new_password"
                 name="new_password"
-                type="password"
                 required
                 minLength={6}
                 className={inputClass}
               />
             </Field>
             <Field label="Confirm New Password" htmlFor="confirm_password">
-              <input
+              <PasswordInput
                 id="confirm_password"
                 name="confirm_password"
-                type="password"
                 required
                 minLength={6}
                 className={inputClass}

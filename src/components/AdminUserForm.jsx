@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import { Field, inputClass } from '@/components/ui';
+import PasswordInput from '@/components/PasswordInput';
 
 const ACCOUNT_OPTIONS = [
   {
@@ -26,6 +27,45 @@ const ACCOUNT_OPTIONS = [
     activeClass: 'border-red-600 bg-red-50 text-red-700',
   },
 ];
+
+// batas isian jam n menit (lama hari tidak dibatasi)
+const MAX_SUSPEND_HOURS = 24;
+const MAX_SUSPEND_MINUTES = 60;
+
+// ubah angka isian jadi bilangan bulat, kosong = 0
+function toWholeNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return 0;
+  }
+  return Math.trunc(number);
+}
+
+// susun teks lama suspend, misal: 3 days 4 hours 30 minutes
+function durationText(days, hours, minutes) {
+  const parts = [];
+  if (days > 0) {
+    parts.push(`${days} day${days === 1 ? '' : 's'}`);
+  }
+  if (hours > 0) {
+    parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+  }
+  return parts.join(' ');
+}
+
+// tampilkan tanggal n jam akhir suspend
+function formatUntil(isoValue) {
+  return new Date(isoValue).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 const VERIFY_OPTIONS = [
   { value: 'active', label: 'Approved' },
@@ -98,6 +138,12 @@ function ChoiceGroup({ name, options, value, onChange, disabled = false }) {
 // form admin buat edit profil user, status akun (active/inactive/suspend), toko seller, n reset password
 export default function AdminUserForm({ action, user, isSelf }) {
   const [statusAkun, setStatusAkun] = useState(user.status_akun);
+  const [suspendDays, setSuspendDays] = useState('1');
+  const [suspendHours, setSuspendHours] = useState('0');
+  const [suspendMinutes, setSuspendMinutes] = useState('0');
+
+  // suspend yg masih berjalan dikunci: tidak bisa dicabut / diubah sebelum waktunya habis
+  const isLocked = user.status_akun === 'suspended' && Boolean(user.suspend_sampai);
 
   let initialVerification = 'pending';
   if (user.role === 'seller') {
@@ -128,12 +174,119 @@ export default function AdminUserForm({ action, user, isSelf }) {
   }
 
   let selfHiddenStatusInput = null;
-  if (isSelf) {
+  if (isSelf || isLocked) {
     selfHiddenStatusInput = <input type="hidden" name="status_akun" value={user.status_akun} />;
   }
 
+  // ubah isian lama suspend
+  function handleDaysChange(changeEvent) {
+    setSuspendDays(changeEvent.target.value);
+  }
+
+  function handleHoursChange(changeEvent) {
+    setSuspendHours(changeEvent.target.value);
+  }
+
+  function handleMinutesChange(changeEvent) {
+    setSuspendMinutes(changeEvent.target.value);
+  }
+
+  let suspendDurationSection = null;
+  if (statusAkun === 'suspended' && !isLocked) {
+    const summaryText = durationText(
+      toWholeNumber(suspendDays),
+      toWholeNumber(suspendHours),
+      toWholeNumber(suspendMinutes)
+    );
+
+    let summaryElement = null;
+    if (summaryText) {
+      summaryElement = (
+        <p className="text-[11px] text-neutral-950">
+          Suspended for <span className="font-semibold">{summaryText}</span> from the moment you save. It
+          can&apos;t be lifted early — the account opens again automatically when the time is up.
+        </p>
+      );
+    }
+
+    suspendDurationSection = (
+      <div className="space-y-2">
+        <p className="block text-sm font-medium text-neutral-950">Suspension length</p>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Days" htmlFor="suspend_hari" hint="Minimum 1.">
+            <input
+              id="suspend_hari"
+              name="suspend_hari"
+              type="number"
+              required
+              min={1}
+              step={1}
+              value={suspendDays}
+              onChange={handleDaysChange}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Hours" htmlFor="suspend_jam" hint={`0–${MAX_SUSPEND_HOURS}`}>
+            <input
+              id="suspend_jam"
+              name="suspend_jam"
+              type="number"
+              required
+              min={0}
+              max={MAX_SUSPEND_HOURS}
+              step={1}
+              value={suspendHours}
+              onChange={handleHoursChange}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Minutes" htmlFor="suspend_menit" hint={`0–${MAX_SUSPEND_MINUTES}`}>
+            <input
+              id="suspend_menit"
+              name="suspend_menit"
+              type="number"
+              required
+              min={0}
+              max={MAX_SUSPEND_MINUTES}
+              step={1}
+              value={suspendMinutes}
+              onChange={handleMinutesChange}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        {summaryElement}
+      </div>
+    );
+  }
+
+  let lockedSuspendSection = null;
+  if (isLocked) {
+    let lockedReasonElement = null;
+    if (user.alasan_status) {
+      lockedReasonElement = (
+        <p className="text-xs text-red-700">
+          <span className="font-semibold">Reason:</span> {user.alasan_status}
+        </p>
+      );
+    }
+
+    lockedSuspendSection = (
+      <div className="space-y-1.5 rounded-xl border border-red-200 bg-red-50/40 p-4">
+        <p className="text-sm font-semibold text-red-700">
+          Suspended until {formatUntil(user.suspend_sampai)}
+        </p>
+        {lockedReasonElement}
+        <p className="text-[11px] text-neutral-950">
+          A suspension has a fixed end time, so it can&apos;t be lifted or changed early. The account opens
+          again automatically when the time is up. You can still edit the profile and password below.
+        </p>
+      </div>
+    );
+  }
+
   let nonActiveAccessSection = null;
-  if (statusAkun !== 'active') {
+  if (statusAkun !== 'active' && !isLocked) {
     let boxToneClass = 'border-neutral-300 bg-neutral-50';
     if (statusAkun === 'suspended') {
       boxToneClass = 'border-red-200 bg-red-50/40';
@@ -179,6 +332,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
             className={inputClass}
           />
         </Field>
+        {suspendDurationSection}
         {signOutNotice}
       </div>
     );
@@ -189,6 +343,11 @@ export default function AdminUserForm({ action, user, isSelf }) {
     let storeNameDefault = '';
     if (user.nama_toko) {
       storeNameDefault = user.nama_toko;
+    }
+
+    let storeDescriptionDefault = '';
+    if (user.deskripsi_toko) {
+      storeDescriptionDefault = user.deskripsi_toko;
     }
 
     sellerStoreSection = (
@@ -202,6 +361,16 @@ export default function AdminUserForm({ action, user, isSelf }) {
             maxLength={120}
             defaultValue={storeNameDefault}
             placeholder="e.g. Urban Thread"
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Store Description" htmlFor="deskripsi_toko" hint="Shown on the store page.">
+          <textarea
+            id="deskripsi_toko"
+            name="deskripsi_toko"
+            rows={3}
+            maxLength={1000}
+            defaultValue={storeDescriptionDefault}
             className={inputClass}
           />
         </Field>
@@ -253,7 +422,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
         </Field>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field label="Phone Number" htmlFor="no_hp" hint="Optional. 8–20 digits.">
+          <Field label="Phone Number" htmlFor="no_hp" hint="8–20 digits.">
             <input
               id="no_hp"
               name="no_hp"
@@ -264,7 +433,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
               className={inputClass}
             />
           </Field>
-          <Field label="Address" htmlFor="alamat" hint="Optional.">
+          <Field label="Address" htmlFor="alamat">
             <input
               id="alamat"
               name="alamat"
@@ -291,7 +460,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
             options={ACCOUNT_OPTIONS}
             value={statusAkun}
             onChange={setStatusAkun}
-            disabled={isSelf}
+            disabled={isSelf || isLocked}
           />
           {selfHiddenStatusInput}
           <p className="text-[11px] text-neutral-950 mt-1.5">
@@ -300,6 +469,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
           </p>
         </div>
 
+        {lockedSuspendSection}
         {nonActiveAccessSection}
         {sellerStoreSection}
       </section>
@@ -316,10 +486,9 @@ export default function AdminUserForm({ action, user, isSelf }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field label="New Password" htmlFor="new_password" hint="6–72 characters.">
-            <input
+            <PasswordInput
               id="new_password"
               name="new_password"
-              type="password"
               autoComplete="new-password"
               minLength={6}
               maxLength={72}
@@ -328,10 +497,9 @@ export default function AdminUserForm({ action, user, isSelf }) {
             />
           </Field>
           <Field label="Confirm New Password" htmlFor="confirm_password">
-            <input
+            <PasswordInput
               id="confirm_password"
               name="confirm_password"
-              type="password"
               autoComplete="new-password"
               minLength={6}
               maxLength={72}
