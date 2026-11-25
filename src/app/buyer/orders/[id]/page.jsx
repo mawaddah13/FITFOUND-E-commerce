@@ -14,6 +14,7 @@ import StarRatingInput from '@/components/StarRatingInput';
 import { Card, OrderStatusBadge, inputClass } from '@/components/ui';
 import { formatRupiah, formatDate, formatStepDate, getStatusDate } from '@/lib/format';
 import { hasSize } from '@/lib/sizes';
+import { activeAccountSql } from '@/lib/products';
 
 // daftar tahap status order buat tampilan tracking
 const TRACKING_STEPS = [
@@ -49,9 +50,14 @@ export default async function BuyerOrderDetailPage({ params }) {
   // ambil rincian barang di order ini beserta ulasan user (kalau sudah pernah diulas)
   const resOrderItems = await pool.query(
     `SELECT oi.id_order_item, oi.id_product, oi.nama_produk, oi.gambar, oi.ukuran, oi.jumlah, oi.harga_satuan,
-            r.rating, r.komentar
+            r.rating, r.komentar,
+            (su.id_user IS NOT NULL) AS masih_dijual
      FROM order_items oi
      LEFT JOIN reviews r ON r.id_order = oi.id_order AND r.id_product = oi.id_product
+     LEFT JOIN products p ON p.id_product = oi.id_product
+     LEFT JOIN stores s ON s.id_store = p.id_store
+     LEFT JOIN users su ON su.id_user = s.id_user
+       AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
      WHERE oi.id_order = $1
      ORDER BY oi.id_order_item`,
     [orderId]
@@ -354,12 +360,13 @@ export default async function BuyerOrderDetailPage({ params }) {
               }
 
               // kalau produk masih ada di katalog bisa diklik ke halaman detail produknya
+              // produk yg sudah dihapus / tokonya nonaktif tetap ada di riwayat, tp tidak bisa diklik
               let itemTitleElement = (
                 <p className="text-sm font-medium">
                   {orderItem.nama_produk} (no longer available)
                 </p>
               );
-              if (orderItem.id_product) {
+              if (orderItem.id_product && orderItem.masih_dijual) {
                 itemTitleElement = (
                   <Link
                     href={`/products/${orderItem.id_product}`}
