@@ -4,7 +4,13 @@ import pool, { withTransaction } from '@/lib/db';
 import { createSession, deleteSession, getSession } from '@/lib/session';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { liftExpiredSuspensions } from '@/lib/auth';
-import { getString, isValidEmail } from '@/lib/validation';
+import { getString, isValidEmail, isValidPhone } from '@/lib/validation';
+import {
+  hasUploadedFile,
+  validateImageFile,
+  saveImageFile,
+  deleteUploadedImage,
+} from '@/lib/upload';
 import { redirect } from 'next/navigation';
 
 function formatAuthError(error) {
@@ -139,6 +145,45 @@ export async function loginAction(prevState, formData) {
   redirect(destination);
 }
 
+// cek data pendaftaran seller per tahap, kembalikan error + nomor tahapnya
+function checkSellerRegistration(fields, ktpFile, faceFile) {
+  // tahap 1: informasi pribadi
+  if (!isValidPhone(fields.noHp)) {
+    return { error: 'Please enter a valid phone number (8–20 characters, numbers only).', step: 1 };
+  }
+
+  // tahap 2: informasi toko
+  if (fields.namaToko.length < 3 || fields.namaToko.length > 120) {
+    return { error: 'Store name must be 3–120 characters.', step: 2 };
+  }
+  if (fields.alamat.length < 10) {
+    return { error: 'Please enter the full store address (street, city, postal code).', step: 2 };
+  }
+  if (fields.deskripsiToko.length > 500) {
+    return { error: 'Store description must be 500 characters or less.', step: 2 };
+  }
+
+  // tahap 3: verifikasi n keamanan
+  if (!hasUploadedFile(ktpFile)) {
+    return { error: 'Please upload a photo of your ID card (KTP).', step: 3 };
+  }
+  if (!hasUploadedFile(faceFile)) {
+    return { error: 'Please upload a selfie holding your ID card.', step: 3 };
+  }
+  const ktpError = validateImageFile(ktpFile);
+  if (ktpError) {
+    return { error: `ID card photo: ${ktpError}`, step: 3 };
+  }
+  const faceError = validateImageFile(faceFile);
+  if (faceError) {
+    return { error: `Selfie photo: ${faceError}`, step: 3 };
+  }
+  if (fields.password !== fields.konfirmasiPassword) {
+    return { error: 'Password confirmation does not match.', step: 3 };
+  }
+  return null;
+}
+
 export async function registerAction(prevState, formData) {
   const role = getString(formData, 'role') || 'buyer';
   const nama = getString(formData, 'nama');
@@ -146,33 +191,48 @@ export async function registerAction(prevState, formData) {
   const email = getString(formData, 'email').toLowerCase();
   const password = formData.get('password')?.toString() || '';
 
-  // no hp n alamat tidak diminta saat daftar, diisi nanti di profil (buyer saat order, seller sebelum jualan)
-  const values = { role, nama, nama_toko: namaToko, email };
+  // buyer: no hp n alamat diisi nanti di profil. seller: diisi lengkap waktu daftar (3 tahap)
+  const noHp = getString(formData, 'no_hp');
+  const alamat = getString(formData, 'alamat');
+  const deskripsiToko = getString(formData, 'deskripsi_toko');
+  const konfirmasiPassword = formData.get('konfirmasi_password')?.toString() || '';
+  const ktpFile = formData.get('foto_ktp');
+  const faceFile = formData.get('foto_wajah');
+
+  const values = { role, nama, nama_toko: namaToko, email, no_hp: noHp, alamat, deskripsi_toko: deskripsiToko };
 
   if (nama === '' || email === '' || password === '') {
-    return { error: 'Full name, email, and password are required.', values };
+    return { error: 'Full name, email, and password are required.', values, step: 1 };
   }
 
   if (role !== 'buyer' && role !== 'seller') {
-    return { error: 'Invalid role selected.', values };
+    return { error: 'Invalid role selected.', values, step: 1 };
   }
 
   if (nama.length < 3 || nama.length > 100) {
-    return { error: 'Full name must be 3–100 characters.', values };
+    return { error: 'Full name must be 3–100 characters.', values, step: 1 };
   }
 
   if (!isValidEmail(email)) {
-    return { error: 'Please enter a valid email address.', values };
+    return { error: 'Please enter a valid email address.', values, step: 1 };
   }
 
   if (password.length < 6) {
-    return { error: 'Password must be at least 6 characters.', values };
+    return { error: 'Password must be at least 6 characters.', values, step: 3 };
   }
 
-  if (role === 'seller' && namaToko === '') {
-    return { error: 'Store name is required for Seller registration.', values };
+  if (role === 'seller') {
+    const sellerError = checkSellerRegistration(
+      { noHp, namaToko, alamat, deskripsiToko, password, konfirmasiPassword },
+      ktpFile,
+      faceFile
+    );
+    if (sellerError) {
+      return { ...sellerError, values };
+    }
   }
 
+  const savedPhotos = [];
   try {
     const checkEmail = await pool.query(
       'SELECT id_user FROM users WHERE email = $1',
@@ -180,31 +240,49 @@ export async function registerAction(prevState, formData) {
     );
 
     if (checkEmail.rows.length > 0) {
-      return { error: 'Email is already registered.', values };
+      return { error: 'Email is already registered.', values, step: 1 };
     }
 
     let initialStatus = 'active';
+    let ktpFileName = null;
+    let faceFileName = null;
     if (role === 'seller') {
       initialStatus = 'pending';
+      ktpFileName = await saveImageFile(ktpFile, 'verifications');
+      savedPhotos.push(ktpFileName);
+      faceFileName = await saveImageFile(faceFile, 'verifications');
+      savedPhotos.push(faceFileName);
     }
 
     const passwordHash = await hashPassword(password);
 
+    let phoneValue = null;
+    let addressValue = null;
+    if (role === 'seller') {
+      phoneValue = noHp;
+      addressValue = alamat;
+    }
+
     const newUser = await withTransaction(async (client) => {
       const insertUser = await client.query(
-        `INSERT INTO users (nama, email, password_hash, role, status)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO users (nama, email, password_hash, role, status, no_hp, alamat)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id_user, role, status`,
-        [nama, email, passwordHash, role, initialStatus]
+        [nama, email, passwordHash, role, initialStatus, phoneValue, addressValue]
       );
       const created = insertUser.rows[0];
 
       await client.query('INSERT INTO carts (id_user) VALUES ($1)', [created.id_user]);
 
       if (role === 'seller') {
+        let descriptionValue = null;
+        if (deskripsiToko) {
+          descriptionValue = deskripsiToko;
+        }
         const storeRes = await client.query(
-          'INSERT INTO stores (id_user, nama_toko) VALUES ($1, $2) RETURNING id_store',
-          [created.id_user, namaToko]
+          `INSERT INTO stores (id_user, nama_toko, deskripsi_toko, foto_ktp, foto_wajah, persetujuan_dilihat)
+           VALUES ($1, $2, $3, $4, $5, FALSE) RETURNING id_store`,
+          [created.id_user, namaToko, descriptionValue, ktpFileName, faceFileName]
         );
         created.id_store = storeRes.rows[0].id_store;
       }
@@ -219,7 +297,11 @@ export async function registerAction(prevState, formData) {
     });
   } catch (error) {
     console.error('Register error:', error);
-    return { error: formatAuthError(error), values };
+    // daftar gagal: hapus lagi foto verifikasi yg sempat tersimpan
+    for (const photoName of savedPhotos) {
+      await deleteUploadedImage(photoName);
+    }
+    return { error: formatAuthError(error), values, step: 1 };
   }
 
   if (role === 'seller') {
@@ -251,7 +333,50 @@ export async function deleteRejectedAccountAction() {
     return { error: 'Only rejected seller accounts can be deleted from this page.' };
   }
 
+  // foto ktp n wajah ikut dihapus dari folder uploads
+  const photoResult = await pool.query(
+    'SELECT foto_ktp, foto_wajah FROM stores WHERE id_user = $1',
+    [user.id_user]
+  );
+
   await pool.query('DELETE FROM users WHERE id_user = $1', [user.id_user]);
+
+  if (photoResult.rows.length > 0) {
+    await deleteUploadedImage(photoResult.rows[0].foto_ktp);
+    await deleteUploadedImage(photoResult.rows[0].foto_wajah);
+  }
+
   await deleteSession();
   redirect('/register');
+}
+// seller pencet "Continue as Seller" di pop up toko disetujui, trs masuk ke seller center
+export async function continueAsSellerAction() {
+  const session = await getSession();
+  if (!session) {
+    redirect('/login');
+  }
+
+  const res = await pool.query(
+    `SELECT u.id_user, u.role, u.status, s.id_store
+     FROM users u
+     LEFT JOIN stores s ON s.id_user = u.id_user
+     WHERE u.id_user = $1`,
+    [session.id]
+  );
+  const user = res.rows[0];
+  if (!user || user.role !== 'seller' || user.status !== 'active' || !user.id_store) {
+    redirect('/seller/pending');
+  }
+
+  await pool.query('UPDATE stores SET persetujuan_dilihat = TRUE WHERE id_user = $1', [user.id_user]);
+
+  // perbarui sesi biar statusnya ikut jadi active (link Seller Center di navbar muncul)
+  await createSession({
+    id: user.id_user,
+    role: user.role,
+    status: user.status,
+    storeId: user.id_store,
+  });
+
+  redirect('/seller/dashboard');
 }
