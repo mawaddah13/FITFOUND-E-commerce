@@ -400,7 +400,7 @@ export default function AdminUserForm({ action, user, isSelf }) {
   }
 
   return (
-    <ActionForm action={action} className="space-y-8">
+    <ActionForm action={action} skipIfUnchanged className="space-y-8">
       <section className="space-y-5">
         <h3 className="text-sm font-semibold text-neutral-950 underline underline-offset-4">
           Profile

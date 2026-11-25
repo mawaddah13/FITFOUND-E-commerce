@@ -74,7 +74,7 @@ export default async function StorePage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6 items-start">
         <Card>
-          <ActionForm action={updateStoreAction} className="space-y-4">
+          <ActionForm action={updateStoreAction} skipIfUnchanged className="space-y-4">
             <ImageInput
               name="gambar_file"
               label="Store Profile Photo"
@@ -119,7 +119,7 @@ export default async function StorePage() {
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
         <Card>
           <h3 className="text-base font-semibold mb-4">Account Information</h3>
-          <ActionForm action={updateProfileAction} className="space-y-4">
+          <ActionForm action={updateProfileAction} skipIfUnchanged className="space-y-4">
             <Field label="Full Name" htmlFor="nama">
               <input
                 id="nama"
@@ -169,7 +169,7 @@ export default async function StorePage() {
 
         <Card>
           <h3 className="text-base font-semibold mb-4">Change Password</h3>
-          <ActionForm action={changePasswordAction} resetOnSuccess className="space-y-4">
+          <ActionForm action={changePasswordAction} resetOnSuccess skipIfUnchanged className="space-y-4">
             <Field label="Current Password" htmlFor="current_password">
               <PasswordInput
                 id="current_password"

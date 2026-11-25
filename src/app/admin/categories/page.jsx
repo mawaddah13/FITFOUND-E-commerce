@@ -47,7 +47,7 @@ export default async function AdminCategoriesPage() {
                 key={categoryItem.id_category}
                 className="p-4 flex flex-col md:flex-row md:items-start gap-3"
               >
-                <ActionForm action={boundUpdateAction} className="flex-1">
+                <ActionForm action={boundUpdateAction} skipIfUnchanged className="flex-1">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       name="nama_kategori"
