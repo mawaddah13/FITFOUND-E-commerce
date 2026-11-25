@@ -5,6 +5,7 @@ import { approveSellerAction, rejectSellerAction } from '@/app/action/admin';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import RejectSellerForm from '@/components/RejectSellerForm';
+import PhotoLightbox from '@/components/PhotoLightbox';
 import { PageHeader, EmptyState, UserStatusBadge } from '@/components/ui';
 import { formatDate } from '@/lib/format';
 
@@ -126,13 +127,14 @@ export default async function SellerVerificationPage({ searchParams }) {
                 return (
                   <div key={photoItem.kind}>
                     <p className="text-[11px] font-medium text-neutral-700 mb-1">{photoItem.label}</p>
-                    <a href={photoUrl} target="_blank" rel="noopener noreferrer" className="relative z-10 block">
-                      <img
+                    {/* foto dipencet = membesar, ada tombol X buat kembali */}
+                    <div className="relative z-10">
+                      <PhotoLightbox
                         src={photoUrl}
                         alt={`${photoItem.label} of ${sellerItem.nama}`}
                         className="w-full aspect-[4/3] object-cover rounded-xl border border-neutral-200 hover:opacity-80 transition"
                       />
-                    </a>
+                    </div>
                   </div>
                 );
               })}

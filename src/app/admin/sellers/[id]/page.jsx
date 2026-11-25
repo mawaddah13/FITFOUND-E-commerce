@@ -7,6 +7,7 @@ import { toPositiveInt } from '@/lib/validation';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
 import RejectSellerForm from '@/components/RejectSellerForm';
+import PhotoLightbox from '@/components/PhotoLightbox';
 import { Card, UserStatusBadge, AccountStatusBadge } from '@/components/ui';
 import { formatDate } from '@/lib/format';
 
@@ -34,7 +35,7 @@ function SectionTitle({ icon: SectionIcon, title }) {
   );
 }
 
-// foto ktp / selfie ukuran besar, klik buat buka di tab baru
+// foto ktp / selfie ukuran besar, klik buat lihat lebih besar (ada tombol X buat kembali)
 function VerificationPhoto({ label, photoPath, ownerName }) {
   let photoElement = (
     <div className="aspect-[4/3] rounded-xl border border-dashed border-neutral-300 flex items-center justify-center text-sm text-neutral-500">
@@ -43,14 +44,12 @@ function VerificationPhoto({ label, photoPath, ownerName }) {
   );
   if (photoPath) {
     photoElement = (
-      <a href={photoPath} target="_blank" rel="noopener noreferrer" className="block group">
-        <img
-          src={photoPath}
-          alt={`${label} of ${ownerName}`}
-          className="w-full aspect-[4/3] object-contain bg-neutral-100 rounded-xl border border-neutral-200 group-hover:opacity-90 transition"
-        />
-        <span className="mt-1.5 block text-[11px] text-neutral-500">Click to open full size</span>
-      </a>
+      <PhotoLightbox
+        src={photoPath}
+        alt={`${label} of ${ownerName}`}
+        caption="Click to view larger"
+        className="w-full aspect-[4/3] object-contain bg-neutral-100 rounded-xl border border-neutral-200 group-hover:opacity-90 transition"
+      />
     );
   }
   return (
