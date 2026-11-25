@@ -101,9 +101,10 @@ export function buildCategoryHref(segmentValue, categoryValue) {
     params.set('kategori', categoryValue);
   }
 
+  // filter gender kategori dibuka di all products, home tidak punya filter
   const queryString = params.toString();
   if (queryString !== '') {
-    return `/?${queryString}`;
+    return `/products?${queryString}`;
   }
   return '/';
 }
