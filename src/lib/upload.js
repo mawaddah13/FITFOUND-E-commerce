@@ -17,7 +17,7 @@ export const ALLOWED_IMAGE_TYPES = Object.keys(IMAGE_EXTENSIONS);
 
 const UPLOAD_URL_PREFIX = '/uploads/';
 const UPLOAD_ROOT = path.join(process.cwd(), 'public', 'uploads');
-const UPLOAD_FOLDERS = ['products', 'stores'];
+const UPLOAD_FOLDERS = ['products', 'stores', 'verifications'];
 
 // cek ? input memiliki file yg upload
 export function hasUploadedFile(file) {
@@ -133,7 +133,7 @@ export async function deleteUploadedImage(imagePath) {
     `SELECT
        (SELECT COUNT(*) FROM products WHERE gambar = $1) +
        (SELECT COUNT(*) FROM product_images WHERE gambar = $1) +
-       (SELECT COUNT(*) FROM stores WHERE gambar_toko = $1) +
+       (SELECT COUNT(*) FROM stores WHERE gambar_toko = $1 OR foto_ktp = $1 OR foto_wajah = $1) +
        (SELECT COUNT(*) FROM order_items WHERE gambar = $1) AS total`,
     [imagePath]
   );

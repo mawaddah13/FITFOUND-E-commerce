@@ -3,6 +3,7 @@
 -- Warn: DROP TABLE bakal menghapus semua data yang ada dan menggantinya dengan yang baru
 
 -- Hapus tabel lama (urutan dari child ke parent)
+DROP TABLE IF EXISTS order_status_history CASCADE;
 DROP TABLE IF EXISTS reviews CASCADE;
 DROP TABLE IF EXISTS product_sizes CASCADE;
 DROP TABLE IF EXISTS product_images CASCADE;
@@ -21,6 +22,7 @@ DROP TABLE IF EXISTS users CASCADE;
 -- status: verifikasi seller (active, pending, rejected); buyer & admin selalu active
 -- status_akun: akses login (active, inactive, suspended) tanpa menghapus riwayat transaksi
 -- suspend_sampai: NULL berarti permanen sampai dicabut admin
+-- alasan_tolak: alasan admin menolak pendaftaran seller
 CREATE TABLE users (
   id_user SERIAL PRIMARY KEY,
   nama VARCHAR(100) NOT NULL,
@@ -32,6 +34,7 @@ CREATE TABLE users (
   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'rejected')),
   status_akun VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status_akun IN ('active', 'inactive', 'suspended')),
   alasan_status TEXT,
+  alasan_tolak TEXT,
   suspend_sampai TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -39,14 +42,17 @@ CREATE TABLE users (
 
 -- Profil toko (1 user seller = 1 toko)
 -- gambar_toko menyimpan path file di public/uploads/stores
--- sembunyikan_produk: TRUE = produk toko ini disembunyikan dari katalog saat seller sendiri berbelanja
+-- foto_ktp & foto_wajah: path foto verifikasi seller di public/uploads/verifications
+-- persetujuan_dilihat: FALSE = seller belum lihat pop up "toko disetujui"
 CREATE TABLE stores (
   id_store SERIAL PRIMARY KEY,
   id_user INT NOT NULL UNIQUE,
   nama_toko VARCHAR(120) NOT NULL,
   deskripsi_toko TEXT,
   gambar_toko TEXT,
-  sembunyikan_produk BOOLEAN NOT NULL DEFAULT FALSE,
+  foto_ktp TEXT,
+  foto_wajah TEXT,
+  persetujuan_dilihat BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_stores_users
@@ -190,7 +196,8 @@ CREATE TABLE cart_items (
 );
 
 -- Pesanan dipecah per toko saat checkout
--- status_order: pending, processing, shipped, completed, cancelled
+-- status_order: pending (menunggu pembayaran), processing, shipped, completed, cancelled
+-- dibayar_pada: waktu buyer tekan Pay Now (NULL = belum bayar), seller lalu Confirm Payment -> processing
 CREATE TABLE orders (
   id_order SERIAL PRIMARY KEY,
   id_user INT NOT NULL,
@@ -200,6 +207,7 @@ CREATE TABLE orders (
   status_order VARCHAR(30) NOT NULL DEFAULT 'pending' CHECK (status_order IN ('pending', 'processing', 'shipped', 'completed', 'cancelled')),
   alamat_pengiriman TEXT NOT NULL,
   catatan TEXT,
+  dibayar_pada TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_orders_users
@@ -259,7 +267,19 @@ CREATE TABLE reviews (
     ON DELETE CASCADE
 );
 
+-- Riwayat perubahan status pesanan (tanggal setiap tahapan)
+CREATE TABLE order_status_history (
+  id_history SERIAL PRIMARY KEY,
+  id_order INT NOT NULL,
+  status_order VARCHAR(30) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_order_status_history_orders
+    FOREIGN KEY(id_order)
+    REFERENCES orders(id_order)
+    ON DELETE CASCADE
+);
 
+-- Index untuk foreign key agar query join & filter lebih cepat
 CREATE INDEX idx_products_store ON products(id_store);
 CREATE INDEX idx_products_category ON products(id_category);
 CREATE INDEX idx_orders_user ON orders(id_user);
@@ -267,3 +287,4 @@ CREATE INDEX idx_orders_store ON orders(id_store);
 CREATE INDEX idx_reviews_product ON reviews(id_product);
 CREATE INDEX idx_product_images_product ON product_images(id_product);
 CREATE INDEX idx_product_sizes_product ON product_sizes(id_product);
+CREATE INDEX idx_order_status_history_order ON order_status_history(id_order);
