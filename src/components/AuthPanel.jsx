@@ -5,7 +5,8 @@ import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import Logo from '@/components/Logo';
 
-export default function AuthPanel({ initialMode = 'login', nextPath = '' }) {
+// notice: pesan dari halaman login (misal sesi berakhir krn akun diubah admin), diteruskan ke form login
+export default function AuthPanel({ initialMode = 'login', nextPath = '', notice = '' }) {
   const [mode, setMode] = useState(initialMode);
   const [direction, setDirection] = useState('none');
 
@@ -67,7 +68,7 @@ export default function AuthPanel({ initialMode = 'login', nextPath = '' }) {
       'relative z-10 py-2.5 text-sm font-medium text-center rounded-full transition-colors duration-300 cursor-pointer text-neutral-900';
     signUpBtnClass =
       'relative z-10 py-2.5 text-sm font-medium text-center rounded-full transition-colors duration-300 cursor-pointer text-neutral-500 hover:text-neutral-800';
-    activeForm = <LoginForm nextPath={nextPath} onSwitch={handleSelectRegister} />;
+    activeForm = <LoginForm nextPath={nextPath} notice={notice} onSwitch={handleSelectRegister} />;
   }
 
   return (
