@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { jsonError } from '@/lib/api';
-import { activeAccountSql, getHiddenStoreId } from '@/lib/products';
-import { getSession } from '@/lib/session';
+import { activeAccountSql } from '@/lib/products';
 
 // cari produk yg cocok sama ketikan di search bar
 export async function GET(request) {
@@ -21,7 +20,6 @@ export async function GET(request) {
   }
 
   try {
-    const hiddenStoreId = await getHiddenStoreId(await getSession());
     const searchResult = await pool.query(
       `SELECT p.id_product, p.nama_produk, p.harga, p.gambar, c.nama_kategori
        FROM products p
@@ -30,9 +28,8 @@ export async function GET(request) {
        JOIN users su ON su.id_user = s.id_user
          AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
        WHERE p.nama_produk ILIKE $1
-         AND ($2::int IS NULL OR p.id_store <> $2::int)
        ORDER BY p.stok > 0 DESC, p.nama_produk ASC`,
-      [`%${searchKeyword}%`, hiddenStoreId]
+      [`%${searchKeyword}%`]
     );
     return NextResponse.json({ results: searchResult.rows });
   } catch (error) {

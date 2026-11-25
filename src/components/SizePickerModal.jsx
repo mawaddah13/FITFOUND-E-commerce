@@ -184,7 +184,8 @@ export default function SizePickerModal({ productId, mode = 'cart', onClose, onA
         return;
       }
 
-      router.refresh();
+      // tanpa router.refresh spy halaman tidak dirender ulang, cukup angka keranjang di navbar yg diperbarui
+      window.dispatchEvent(new CustomEvent('fitfound:cart-updated', { detail: { totalItems: responseData.totalItems } }));
       onAdded();
       onClose();
     } catch {

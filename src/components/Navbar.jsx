@@ -78,6 +78,24 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  // angka keranjang diperbarui langsung saat Add to Cart (tanpa render ulang halaman)
+  const [liveCartCount, setLiveCartCount] = useState(cartCount);
+  const [lastCartCountProp, setLastCartCountProp] = useState(cartCount);
+  if (lastCartCountProp !== cartCount) {
+    setLastCartCountProp(cartCount);
+    setLiveCartCount(cartCount);
+  }
+
+  useEffect(() => {
+    function handleCartUpdated(cartEvent) {
+      if (cartEvent.detail && typeof cartEvent.detail.totalItems === 'number') {
+        setLiveCartCount(cartEvent.detail.totalItems);
+      }
+    }
+    window.addEventListener('fitfound:cart-updated', handleCartUpdated);
+    return () => window.removeEventListener('fitfound:cart-updated', handleCartUpdated);
+  }, []);
   const [mobileAccessoriesOpen, setMobileAccessoriesOpen] = useState(false);
   const [drawerSegment, setDrawerSegment] = useState(activeSegment);
 
@@ -374,8 +392,8 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     mobileMenuIcon = <FiX className="w-6 h-6 text-neutral-900" />;
   }
 
-  let badgeLabel = String(cartCount);
-  if (cartCount > 99) {
+  let badgeLabel = String(liveCartCount);
+  if (liveCartCount > 99) {
     badgeLabel = '99+';
   }
 
@@ -461,7 +479,7 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
                   >
                     <FiShoppingCart className="w-5 h-5 text-neutral-800" />
                   </ShopLink>
-                  {cartCount > 0 && (
+                  {liveCartCount > 0 && (
                     <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-(--biru) text-white text-[10px] font-semibold flex items-center justify-center pointer-events-none">
                       {badgeLabel}
                     </span>

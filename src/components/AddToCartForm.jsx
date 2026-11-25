@@ -119,7 +119,8 @@ export default function AddToCartForm({ productId, sizes = [] }) {
         setFeedback({ type: 'error', text: errorText });
       } else {
         setFeedback({ type: 'success', text: responseData.message });
-        router.refresh();
+        // tanpa router.refresh spy halaman tidak dirender ulang, cukup angka keranjang di navbar yg diperbarui
+        window.dispatchEvent(new CustomEvent('fitfound:cart-updated', { detail: { totalItems: responseData.totalItems } }));
       }
     } catch {
       setFeedback({
