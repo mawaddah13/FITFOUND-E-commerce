@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { FiAlertOctagon, FiSlash } from 'react-icons/fi';
 import { loginAction } from '@/app/action/auth';
 import { formatDate } from '@/lib/format';
@@ -219,6 +220,17 @@ export default function LoginForm({ nextPath = '', notice = '', onSwitch }) {
           >
             Sign Up here
           </button>
+        </p>
+
+        {/* masuk tanpa akun, lihat2 produk dulu sebagai tamu */}
+        <p className="-mt-2 text-center text-sm text-neutral-400">
+          {'Just browsing? '}
+          <Link
+            href="/"
+            className="text-red-400 font-medium hover:underline underline-offset-4 hover:text-red-600"
+          >
+            Continue as Guest
+          </Link>
         </p>
       </form>
     </>

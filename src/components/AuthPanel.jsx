@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
+import Logo from '@/components/Logo';
 
 export default function AuthPanel({ initialMode = 'login', nextPath = '' }) {
   const [mode, setMode] = useState(initialMode);
@@ -70,7 +71,10 @@ export default function AuthPanel({ initialMode = 'login', nextPath = '' }) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-120px)] bg-(--abumuda) flex items-center justify-center p-6 md:p-10">
+    <div className="min-h-screen bg-(--abumuda) flex flex-col items-center justify-center gap-8 p-6 md:p-10">
+      {/* navbar disembunyikan di halaman ini, jadi logo dipakai buat balik ke home */}
+      <Logo href="/" />
+
       <div className="w-full max-w-[440px] bg-white rounded-3xl shadow-sm border border-neutral-100 p-8 md:p-10 animate-pop-in transition-shadow duration-300 hover:shadow-lg">
         <h1 key={`title-${mode}`} className={`text-3xl font-semibold text-center text-neutral-900 mb-6 ${animationClass}`}>
           {headingText}

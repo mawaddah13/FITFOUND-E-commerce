@@ -2,7 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 
-const HIDDEN_PREFIXES = ['/admin', '/seller'];
+// login & register juga tanpa navbar n footer
+const HIDDEN_PREFIXES = ['/admin', '/seller', '/login', '/register'];
 
 // sembunyikan header dan footer pada halaman autentikasi atau dasbor peran
 export default function AdaptiveLayout({ header, footer, children }) {
