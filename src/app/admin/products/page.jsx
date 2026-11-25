@@ -19,7 +19,11 @@ export default async function AdminProductsPage({ searchParams }) {
 
   // ambil produk, nama kategori, nama tokonya
   let queryText = `
-    SELECT p.id_product, p.nama_produk, p.harga, p.stok, p.gambar, c.nama_kategori, s.nama_toko
+    SELECT p.id_product, p.nama_produk, p.harga, p.stok, p.gambar, c.nama_kategori, s.nama_toko,
+           (SELECT COUNT(DISTINCT o.id_order)::int
+            FROM order_items oi
+            JOIN orders o ON o.id_order = oi.id_order
+            WHERE oi.id_product = p.id_product AND o.status_order IN ('pending', 'processing', 'shipped')) AS active_orders
     FROM products p
     JOIN categories c ON c.id_category = p.id_category
     JOIN stores s ON s.id_store = p.id_store`;
@@ -72,6 +76,16 @@ export default async function AdminProductsPage({ searchParams }) {
       const boundDeleteAction = adminDeleteProductAction.bind(null, productItem.id_product);
       const removeConfirmText = `Remove "${productItem.nama_produk}" from ${productItem.nama_toko}?`;
 
+      // badge kalau produk ini lagi dalam transaksi (pesanan belum selesai), info lengkapnya muncul di toast
+      let activeOrderBadge = null;
+      if (productItem.active_orders > 0) {
+        activeOrderBadge = (
+          <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800">
+            In {productItem.active_orders} active order(s)
+          </span>
+        );
+      }
+
       return (
         <tr key={productItem.id_product}>
           <td className="px-4 py-3">
@@ -82,6 +96,7 @@ export default async function AdminProductsPage({ searchParams }) {
               <div>
                 <p className="font-medium">{productItem.nama_produk}</p>
                 <p className="text-[11px] text-neutral-500">{productItem.nama_kategori}</p>
+                {activeOrderBadge}
               </div>
             </div>
           </td>
@@ -101,7 +116,9 @@ export default async function AdminProductsPage({ searchParams }) {
               <ActionForm
                 action={boundDeleteAction}
                 confirmMessage={removeConfirmText}
+                confirmDescription="Are you sure you want to remove this product?"
                 confirmLabel="Remove"
+                messageAsToast
               >
                 <SubmitButton size="sm" variant="dangerOutline" pendingText="...">
                   Remove

@@ -491,11 +491,26 @@ export async function deleteProductAction(rawProductId, prevState, formData) {
   }
 
   const ownerCheck = await pool.query(
-    'SELECT gambar FROM products WHERE id_product = $1 AND id_store = $2',
+    'SELECT gambar, nama_produk FROM products WHERE id_product = $1 AND id_store = $2',
     [productId, seller.store.id_store]
   );
   if (ownerCheck.rows.length === 0) {
     return { error: 'Product not found in your store.' };
+  }
+
+  // produk yg masih dalam transaksi (pesanan pending, processing, shipped) belum boleh dihapus
+  const activeOrderResult = await pool.query(
+    `SELECT COUNT(DISTINCT o.id_order)::int AS total
+     FROM order_items oi
+     JOIN orders o ON o.id_order = oi.id_order
+     WHERE oi.id_product = $1 AND o.status_order IN ('pending', 'processing', 'shipped')`,
+    [productId]
+  );
+  const activeOrderCount = activeOrderResult.rows[0].total;
+  if (activeOrderCount > 0) {
+    return {
+      error: `This product is still in ${activeOrderCount} active order(s), so it cannot be deleted yet. Try again after those orders are completed or cancelled.`,
+    };
   }
 
   const productImages = await getProductImages(productId, ownerCheck.rows[0].gambar);
@@ -511,5 +526,5 @@ export async function deleteProductAction(rawProductId, prevState, formData) {
 
   revalidatePath('/seller/products');
   revalidatePath('/products');
-  return { success: 'Product deleted.' };
+  return { success: `"${ownerCheck.rows[0].nama_produk}" has been deleted.` };
 }

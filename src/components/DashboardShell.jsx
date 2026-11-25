@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LogoutButton from '@/components/LogoutButton';
 import Logo from '@/components/Logo';
+import Toaster from '@/components/Toaster';
 import {
   FiGrid,
   FiShoppingBag,
@@ -53,6 +54,7 @@ export default function DashboardShell({
   topAction = null,
   profile = null,
   plainPaths = [],
+  fullSidebar = false,
 }) {
   const pathname = usePathname();
 
@@ -66,6 +68,7 @@ export default function DashboardShell({
         <main key={pathname} className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10 animate-page-in">
           {children}
         </main>
+        <Toaster />
       </div>
     );
   }
@@ -185,7 +188,8 @@ export default function DashboardShell({
     );
   }
 
-  let asideStickyClass = 'lg:sticky lg:top-40';
+  // sidebar menempel tepat di bawah navbar (tinggi navbar 80px), tidak terlalu berjarak
+  let asideStickyClass = 'lg:sticky lg:top-24';
   if (panelLabel) {
     asideStickyClass = 'lg:sticky lg:top-24';
   }
@@ -201,6 +205,52 @@ export default function DashboardShell({
     );
   }
 
+  const menuNav = (
+    <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {menuGroups.map(function buildMenuGroup(groupItem, groupIndex) {
+        let groupKey = groupIndex;
+        if (groupItem.title) {
+          groupKey = groupItem.title;
+        }
+
+        // judul grup (Order, Product, Store) tidak ditampilkan lagi, cukup ikon tiap menu
+        return (
+          <div
+            key={groupKey}
+            className="flex lg:flex-col gap-1 lg:[&:not(:first-child)]:mt-1"
+          >
+            {groupItem.links.map(buildNavLink)}
+          </div>
+        );
+      })}
+
+      <div className="shrink-0 lg:mt-4 lg:pt-4 lg:border-t lg:border-neutral-200">
+        {/* tombol logout berlatar merah supaya jelas */}
+        <LogoutButton className="w-full inline-flex items-center text-left px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-200 lg:hover:pl-5 transition-all duration-200 cursor-pointer whitespace-nowrap">
+          <FiLogOut className="w-4 h-4 mr-2.5 shrink-0" aria-hidden="true" />
+          Logout
+        </LogoutButton>
+      </div>
+    </nav>
+  );
+
+  // sidebar akun buyer: putih penuh dari atas sampai bawah layar, menempel di kiri
+  if (fullSidebar) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] md:min-h-[calc(100vh-5rem)] bg-(--abumuda) lg:flex">
+        <aside className="bg-white border-b border-neutral-200 lg:border-b-0 lg:border-r lg:w-64 lg:shrink-0 lg:self-start lg:sticky lg:top-20 lg:h-[calc(100vh-5rem)] lg:overflow-y-auto px-4 py-4 lg:px-5 lg:py-8">
+          {titleBlock}
+          {menuNav}
+        </aside>
+
+        <main key={pathname} className="flex-1 min-w-0 px-4 md:px-8 py-8 md:py-10 animate-page-in">
+          <div className="max-w-6xl">{children}</div>
+        </main>
+        <Toaster />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-(--abumuda)">
       {topBar}
@@ -211,38 +261,14 @@ export default function DashboardShell({
         >
           {titleBlock}
 
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {menuGroups.map(function buildMenuGroup(groupItem, groupIndex) {
-              let groupKey = groupIndex;
-              if (groupItem.title) {
-                groupKey = groupItem.title;
-              }
-
-              // judul grup (Order, Product, Store) tidak ditampilkan lagi, cukup ikon tiap menu
-              return (
-                <div
-                  key={groupKey}
-                  className="flex lg:flex-col gap-1 lg:[&:not(:first-child)]:mt-1"
-                >
-                  {groupItem.links.map(buildNavLink)}
-                </div>
-              );
-            })}
-
-            <div className="shrink-0 lg:mt-4 lg:pt-4 lg:border-t lg:border-neutral-200">
-              {/* tombol logout berlatar merah supaya jelas */}
-              <LogoutButton className="w-full inline-flex items-center text-left px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-200 lg:hover:pl-5 transition-all duration-200 cursor-pointer whitespace-nowrap">
-                <FiLogOut className="w-4 h-4 mr-2.5 shrink-0" aria-hidden="true" />
-                Logout
-              </LogoutButton>
-            </div>
-          </nav>
+          {menuNav}
         </aside>
 
         <main key={pathname} className="min-w-0 animate-page-in">
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

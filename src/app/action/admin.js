@@ -514,6 +514,21 @@ export async function adminDeleteProductAction(rawProductId, prevState, formData
     return NOT_ALLOWED;
   }
 
+  // produk yg masih ada di pesanan berjalan (pending, processing, shipped) tidak boleh dihapus dulu
+  const activeOrderResult = await pool.query(
+    `SELECT COUNT(DISTINCT o.id_order)::int AS total
+     FROM order_items oi
+     JOIN orders o ON o.id_order = oi.id_order
+     WHERE oi.id_product = $1 AND o.status_order IN ('pending', 'processing', 'shipped')`,
+    [productId]
+  );
+  const activeOrderCount = activeOrderResult.rows[0].total;
+  if (activeOrderCount > 0) {
+    return {
+      error: `This product is still in ${activeOrderCount} active order(s), so it cannot be removed yet. Try again after those orders are completed or cancelled.`,
+    };
+  }
+
   const galleryResult = await pool.query(
     'SELECT gambar FROM product_images WHERE id_product = $1',
     [productId]
@@ -543,5 +558,5 @@ export async function adminDeleteProductAction(rawProductId, prevState, formData
 
   revalidatePath('/admin/products');
   revalidatePath('/products');
-  return { success: `Product "${deleteResult.rows[0].nama_produk}" has been removed.` };
+  return { success: `"${deleteResult.rows[0].nama_produk}" has been removed.` };
 }

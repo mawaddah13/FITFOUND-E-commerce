@@ -226,6 +226,8 @@ export default async function SellerProductsPage({ searchParams }) {
                         <ActionForm
                           action={boundDeleteAction}
                           confirmMessage={deleteConfirmText}
+                          confirmDescription="Are you sure you want to delete this product?"
+                          messageAsToast
                         >
                           <SubmitButton
                             size="sm"
