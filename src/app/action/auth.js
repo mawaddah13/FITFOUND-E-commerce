@@ -229,10 +229,10 @@ export async function registerAction(prevState, formData) {
   }
 }
 
-// habis logout kembali ke landing page (Home), bukan ke halaman login
+// habis logout langsung ke halaman login
 export async function logoutAction() {
   await deleteSession();
-  redirect('/');
+  redirect('/login');
 }
 
 export async function deleteRejectedAccountAction() {
