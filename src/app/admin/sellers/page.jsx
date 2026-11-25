@@ -4,31 +4,34 @@ import { requireAdminPage } from '@/lib/auth';
 import { approveSellerAction, rejectSellerAction } from '@/app/action/admin';
 import ActionForm from '@/components/ActionForm';
 import SubmitButton from '@/components/SubmitButton';
+import RejectSellerForm from '@/components/RejectSellerForm';
 import { PageHeader, EmptyState, UserStatusBadge } from '@/components/ui';
 import { formatDate } from '@/lib/format';
 
-const TABS = ['pending', 'active', 'rejected'];
-const TAB_LABEL = { pending: 'Pending', active: 'Approved', rejected: 'Rejected' };
+// tab All = semua seller (pending, approved, rejected)
+const TABS = ['all', 'pending', 'active', 'rejected'];
+const TAB_LABEL = { all: 'All', pending: 'Pending', active: 'Approved', rejected: 'Rejected' };
 
 // cek pilihan status trs tampilkan daftar akun seller buat disetujui atau ditolak
 export default async function SellerVerificationPage({ searchParams }) {
   await requireAdminPage();
   const resolvedSearchParams = await searchParams;
 
-  let activeTab = 'pending';
+  let activeTab = 'all';
   if (resolvedSearchParams && typeof resolvedSearchParams.tab === 'string') {
     activeTab = resolvedSearchParams.tab;
   }
   if (!TABS.includes(activeTab)) {
-    activeTab = 'pending';
+    activeTab = 'all';
   }
 
   // ambil data akun seller jg info tokonya sesuai status yg dipilih
   const resSellers = await pool.query(
-    `SELECT u.id_user, u.nama, u.email, u.no_hp, u.status, u.created_at, s.nama_toko, s.deskripsi_toko
+    `SELECT u.id_user, u.nama, u.email, u.no_hp, u.alamat, u.status, u.alasan_tolak, u.created_at,
+            s.nama_toko, s.deskripsi_toko, s.foto_ktp, s.foto_wajah
      FROM users u
      LEFT JOIN stores s ON s.id_user = u.id_user
-     WHERE u.role = 'seller' AND u.status = $1
+     WHERE u.role = 'seller' AND ($1 = 'all' OR u.status = $1)
      ORDER BY u.created_at ASC`,
     [activeTab]
   );
@@ -36,7 +39,10 @@ export default async function SellerVerificationPage({ searchParams }) {
 
   let sellersListContent = null;
   if (sellers.length === 0) {
-    const emptyMessageText = `No ${TAB_LABEL[activeTab].toLowerCase()} sellers.`;
+    let emptyMessageText = `No ${TAB_LABEL[activeTab].toLowerCase()} sellers.`;
+    if (activeTab === 'all') {
+      emptyMessageText = 'No sellers yet.';
+    }
     sellersListContent = <EmptyState message={emptyMessageText} />;
   } else {
     sellersListContent = (
@@ -61,54 +67,99 @@ export default async function SellerVerificationPage({ searchParams }) {
             );
           }
 
-          let approveActionElement = null;
-          if (sellerItem.status !== 'active') {
+          // approve / reject cuma buat seller yg masih pending
+          // (yg sudah approved tidak bisa direject, yg rejected tidak bisa diapprove)
+          let sellerActionsElement = null;
+          if (sellerItem.status === 'pending') {
             const boundApproveAction = approveSellerAction.bind(null, sellerItem.id_user);
-            approveActionElement = (
-              <ActionForm action={boundApproveAction} className="flex-1">
-                <SubmitButton
-                  variant="success"
-                  size="sm"
-                  pendingText="Approving..."
-                  className="w-full"
+            const boundRejectAction = rejectSellerAction.bind(null, sellerItem.id_user);
+            const targetLabel = sellerItem.nama_toko || sellerItem.nama;
+            sellerActionsElement = (
+              <div className="relative z-10 mt-auto pt-4 flex flex-wrap gap-2">
+                <ActionForm
+                  action={boundApproveAction}
+                  messageAsToast
+                  confirmMessage={`Approve ${targetLabel}?`}
+                  confirmDescription="This store will be able to sell products on FITFOUND."
+                  confirmLabel="Approve"
+                  confirmTone="neutral"
+                  className="flex-1"
                 >
-                  Approve
-                </SubmitButton>
-              </ActionForm>
+                  <SubmitButton
+                    variant="success"
+                    size="sm"
+                    pendingText="Approving..."
+                    className="w-full"
+                  >
+                    Approve
+                  </SubmitButton>
+                </ActionForm>
+                <RejectSellerForm action={boundRejectAction} storeLabel={targetLabel} />
+              </div>
             );
           }
 
-          let rejectActionElement = null;
-          if (sellerItem.status !== 'rejected') {
-            const boundRejectAction = rejectSellerAction.bind(null, sellerItem.id_user);
-            const targetLabel = sellerItem.nama_toko || sellerItem.nama;
-            const rejectPromptText = `Reject ${targetLabel}?`;
+          let addressText = '-';
+          if (sellerItem.alamat) {
+            addressText = sellerItem.alamat;
+          }
 
-            rejectActionElement = (
-              <ActionForm
-                action={boundRejectAction}
-                confirmMessage={rejectPromptText}
-                confirmDescription="The seller will see the rejection and can delete their account."
-                confirmLabel="Reject"
-                className="flex-1"
-              >
-                <SubmitButton
-                  variant="dangerOutline"
-                  size="sm"
-                  pendingText="Rejecting..."
-                  className="w-full"
-                >
-                  Reject
-                </SubmitButton>
-              </ActionForm>
+          // foto ktp n selfie yg diupload seller waktu daftar
+          const verificationPhotos = [
+            { kind: 'ktp', label: 'ID Card (KTP)', fileName: sellerItem.foto_ktp },
+            { kind: 'face', label: 'Selfie with ID', fileName: sellerItem.foto_wajah },
+          ];
+          const verificationElement = (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {verificationPhotos.map(function buildVerificationPhoto(photoItem) {
+                if (!photoItem.fileName) {
+                  return (
+                    <div key={photoItem.kind}>
+                      <p className="text-[11px] font-medium text-neutral-700 mb-1">{photoItem.label}</p>
+                      <div className="aspect-[4/3] rounded-xl border border-dashed border-neutral-300 flex items-center justify-center text-[11px] text-neutral-500">
+                        No photo
+                      </div>
+                    </div>
+                  );
+                }
+                const photoUrl = photoItem.fileName;
+                return (
+                  <div key={photoItem.kind}>
+                    <p className="text-[11px] font-medium text-neutral-700 mb-1">{photoItem.label}</p>
+                    <a href={photoUrl} target="_blank" rel="noopener noreferrer" className="relative z-10 block">
+                      <img
+                        src={photoUrl}
+                        alt={`${photoItem.label} of ${sellerItem.nama}`}
+                        className="w-full aspect-[4/3] object-cover rounded-xl border border-neutral-200 hover:opacity-80 transition"
+                      />
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          );
+
+          let rejectReasonElement = null;
+          if (sellerItem.status === 'rejected') {
+            rejectReasonElement = (
+              <p className="mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+                <span className="font-semibold">Reason: </span>
+                {sellerItem.alasan_tolak || 'No reason given.'}
+              </p>
             );
           }
 
           return (
             <div
               key={sellerItem.id_user}
-              className="bg-white rounded-2xl border border-neutral-200/80 p-5 flex flex-col"
+              className="relative bg-white rounded-2xl border border-neutral-200/80 p-5 flex flex-col hover:border-neutral-400 hover:shadow-md transition"
             >
+              {/* seluruh kartu bisa dipencet buat lihat detail seller lebih jelas (bukan edit) */}
+              <Link
+                href={`/admin/sellers/${sellerItem.id_user}`}
+                aria-label={`View details of ${storeTitleText}`}
+                className="absolute inset-0 rounded-2xl"
+              />
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-base font-semibold">{storeTitleText}</p>
@@ -118,15 +169,15 @@ export default async function SellerVerificationPage({ searchParams }) {
                   <p className="text-xs text-neutral-500">
                     Phone: {phoneText} · Registered {formatDate(sellerItem.created_at)}
                   </p>
+                  <p className="text-xs text-neutral-500">Address: {addressText}</p>
                 </div>
                 <UserStatusBadge status={sellerItem.status} />
               </div>
               {storeDescriptionElement}
+              {verificationElement}
+              {rejectReasonElement}
 
-              <div className="mt-auto pt-4 flex gap-2">
-                {approveActionElement}
-                {rejectActionElement}
-              </div>
+              {sellerActionsElement}
             </div>
           );
         })}

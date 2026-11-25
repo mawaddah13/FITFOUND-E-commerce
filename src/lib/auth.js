@@ -37,7 +37,7 @@ export async function liftExpiredSuspensions() {
 // ambil data toko punya user brdsrkn id user
 export const getStoreByUserId = cache(async function getStoreByUserId(idUser) {
   const res = await pool.query(
-    `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, created_at
+    `SELECT id_store, id_user, nama_toko, deskripsi_toko, gambar_toko, persetujuan_dilihat, created_at
      FROM stores
      WHERE id_user = $1`,
     [idUser]
@@ -150,6 +150,10 @@ export async function requireSellerPage() {
   }
   const store = await getStoreByUserId(user.id_user);
   if (!store) {
+    redirect('/seller/pending');
+  }
+  // baru disetujui admin: tampilkan pop up "toko disetujui" dulu di halaman pending
+  if (store.persetujuan_dilihat === false) {
     redirect('/seller/pending');
   }
   return { user, store };

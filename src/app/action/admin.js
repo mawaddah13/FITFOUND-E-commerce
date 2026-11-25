@@ -32,22 +32,33 @@ function readWholeNumber(formData, fieldName) {
   return number;
 }
 
-// cek n perbarui status verif penjual oleh admin
-async function setSellerStatus(rawUserId, nextStatus) {
+// cek n perbarui status verif penjual oleh admin (alasan wajib kalau ditolak)
+async function setSellerStatus(rawUserId, nextStatus, rejectReason) {
   const userId = toPositiveInt(rawUserId);
   const admin = await getUserWithRole('admin');
   if (!admin || !userId) {
     return NOT_ALLOWED;
   }
 
+  let reasonValue = null;
+  if (nextStatus === 'rejected') {
+    reasonValue = rejectReason;
+  }
+
+  // cuma seller yg masih pending yg bisa diapprove / direject
   const updateResult = await pool.query(
-    `UPDATE users SET updated_at = CURRENT_TIMESTAMP, status = $1
-     WHERE id_user = $2 AND role = 'seller'
+    `UPDATE users SET updated_at = CURRENT_TIMESTAMP, status = $1, alasan_tolak = $3
+     WHERE id_user = $2 AND role = 'seller' AND status = 'pending'
      RETURNING nama`,
-    [nextStatus, userId]
+    [nextStatus, userId, reasonValue]
   );
   if (updateResult.rowCount === 0) {
-    return { error: 'Seller not found.' };
+    return { error: 'This seller is no longer pending, so it cannot be approved or rejected again.' };
+  }
+
+  // seller yg baru disetujui nanti dapat pop up "toko disetujui" sekali
+  if (nextStatus === 'active') {
+    await pool.query('UPDATE stores SET persetujuan_dilihat = FALSE WHERE id_user = $1', [userId]);
   }
 
   revalidatePath('/admin', 'layout');
@@ -63,12 +74,19 @@ async function setSellerStatus(rawUserId, nextStatus) {
 
 // setujui pengajuan verif akun penjual
 export async function approveSellerAction(userId, prevState, formData) {
-  return setSellerStatus(userId, 'active');
+  return setSellerStatus(userId, 'active', null);
 }
 
-// tolak pengajuan verif akun penjual
+// tolak pengajuan verif akun penjual, harus kasih alasan
 export async function rejectSellerAction(userId, prevState, formData) {
-  return setSellerStatus(userId, 'rejected');
+  const rejectReason = getString(formData, 'alasan_tolak');
+  if (rejectReason.length < 5) {
+    return { error: 'Please write the reason for rejecting this seller (min. 5 characters).' };
+  }
+  if (rejectReason.length > 500) {
+    return { error: 'Rejection reason must be 500 characters or less.' };
+  }
+  return setSellerStatus(userId, 'rejected', rejectReason);
 }
 
 // cek data profil, email, status akun, n sandi trs perbarui akun pengguna oleh admin
@@ -371,12 +389,23 @@ export async function deleteUserAction(rawUserId, prevState, formData) {
     return { error: 'You cannot delete your own account.' };
   }
 
+  // simpan nama file ktp n wajah dulu (kalau seller) biar bisa ikut dihapus
+  const photoResult = await pool.query(
+    'SELECT foto_ktp, foto_wajah FROM stores WHERE id_user = $1',
+    [userId]
+  );
+
   const deleteResult = await pool.query(
     'DELETE FROM users WHERE id_user = $1 RETURNING nama',
     [userId]
   );
   if (deleteResult.rowCount === 0) {
     return { error: 'User not found.' };
+  }
+
+  if (photoResult.rows.length > 0) {
+    await deleteUploadedImage(photoResult.rows[0].foto_ktp);
+    await deleteUploadedImage(photoResult.rows[0].foto_wajah);
   }
 
   revalidatePath('/admin', 'layout');
