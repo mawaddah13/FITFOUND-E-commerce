@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_SIZE = 2 * 1024 * 1024;
+const MAX_SIZE = 5 * 1024 * 1024;
 
 // tampilkan input unggah banyak foto produk beserta foto lama yg dipertahankan
 export default function MultiImageInput({ existingImages = [], max = 5 }) {
@@ -53,7 +53,7 @@ export default function MultiImageInput({ existingImages = [], max = 5 }) {
       }
 
       if (fileItem.size > MAX_SIZE) {
-        setError(`"${fileItem.name}" is larger than 2 MB.`);
+        setError(`"${fileItem.name}" is larger than 5 MB.`);
         continue;
       }
 
@@ -234,7 +234,7 @@ export default function MultiImageInput({ existingImages = [], max = 5 }) {
       </div>
 
       <p className="text-[11px] text-neutral-500">
-        JPG, PNG, WEBP or GIF · max 2 MB each · up to {max} photos. The first photo is the main photo.
+        JPG, PNG, WEBP or GIF · max 5 MB each · up to {max} photos. The first photo is the main photo.
       </p>
       {errorElement}
 

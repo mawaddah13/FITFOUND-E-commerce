@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_SIZE = 2 * 1024 * 1024;
+const MAX_SIZE = 5 * 1024 * 1024;
 
 // tampilkan input unggah satu gambar beserta pratinjau n validasi ukuran
 export default function ImageInput({
@@ -54,7 +54,7 @@ export default function ImageInput({
     }
 
     if (selectedFile.size > MAX_SIZE) {
-      setError('Image size must not exceed 2 MB.');
+      setError('Image size must not exceed 5 MB.');
       changeEvent.target.value = '';
       setPreview('');
       setFileName('');
@@ -142,7 +142,7 @@ export default function ImageInput({
 
         <div className="min-w-0 text-xs text-neutral-500 space-y-1">
           <p className="font-medium text-neutral-800 truncate">{fileStatusText}</p>
-          <p>JPG, PNG, WEBP or GIF · max 2 MB</p>
+          <p>JPG, PNG, WEBP or GIF · max 5 MB</p>
           {replaceHintElement}
           <button
             type="button"
