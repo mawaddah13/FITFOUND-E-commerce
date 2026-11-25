@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getSession } from '@/lib/session';
 import ProductCard from '@/components/ProductCard';
 import CatalogLayout from '@/components/CatalogLayout';
+import SoldOutSection from '@/components/SoldOutSection';
 import { getWishlistIds } from '@/lib/products';
 import {
   parseCatalogParams,
@@ -65,20 +66,59 @@ export default async function ProductsPage({ searchParams }) {
       </div>
     );
   } else {
+    // pisahkan produk yg masih ada stok n yg sudah habis (yg habis ditaruh di bawah, disembunyikan dulu)
+    const availableProducts = [];
+    const soldOutProducts = [];
+    for (const productItem of products) {
+      if (Number(productItem.stok) > 0) {
+        availableProducts.push(productItem);
+      } else {
+        soldOutProducts.push(productItem);
+      }
+    }
+
+    // bentuk grid kartu produk dari daftar yg dikasih
+    function buildProductGrid(productList) {
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+          {productList.map(function buildProductItem(productItem) {
+            const isProductWishlisted = wishlistIds.includes(productItem.id_product);
+            return (
+              <ProductCard
+                key={productItem.id_product}
+                product={productItem}
+                session={session}
+                isWishlisted={isProductWishlisted}
+              />
+            );
+          })}
+        </div>
+      );
+    }
+
+    let availableContent = buildProductGrid(availableProducts);
+    if (availableProducts.length === 0) {
+      availableContent = (
+        <div className="py-12 text-center bg-white/60 rounded-2xl border border-neutral-200/80">
+          <p className="text-sm text-neutral-500">All products here are currently sold out.</p>
+        </div>
+      );
+    }
+
+    let soldOutContent = null;
+    if (soldOutProducts.length > 0) {
+      soldOutContent = (
+        <SoldOutSection count={soldOutProducts.length}>
+          {buildProductGrid(soldOutProducts)}
+        </SoldOutSection>
+      );
+    }
+
     productGrid = (
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map(function buildProductItem(productItem) {
-          const isProductWishlisted = wishlistIds.includes(productItem.id_product);
-          return (
-            <ProductCard
-              key={productItem.id_product}
-              product={productItem}
-              session={session}
-              isWishlisted={isProductWishlisted}
-            />
-          );
-        })}
-      </div>
+      <>
+        {availableContent}
+        {soldOutContent}
+      </>
     );
   }
 
