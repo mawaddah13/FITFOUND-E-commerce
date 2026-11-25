@@ -52,8 +52,23 @@ export default function DashboardShell({
   homeHref = '/',
   topAction = null,
   profile = null,
+  plainPaths = [],
 }) {
   const pathname = usePathname();
+
+  // halaman belanja (keranjang, wishlist, konfirmasi pesanan) tampil tanpa sidebar akun
+  const isPlainPage = plainPaths.some(function matchPlainPath(plainPath) {
+    return pathname === plainPath || pathname.startsWith(`${plainPath}/`);
+  });
+  if (isPlainPage) {
+    return (
+      <div className="min-h-screen bg-(--abumuda)">
+        <main key={pathname} className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10 animate-page-in">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   let menuGroups = [{ title: '', links }];
   if (groups) {

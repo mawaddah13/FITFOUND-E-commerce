@@ -26,7 +26,12 @@ export default async function BuyerLayout({ children }) {
   const accountSubtitle = 'Buyer Account';
 
   return (
-    <DashboardShell title={user.nama} subtitle={accountSubtitle} links={navLinks}>
+    <DashboardShell
+      title={user.nama}
+      subtitle={accountSubtitle}
+      links={navLinks}
+      plainPaths={['/buyer/cart', '/buyer/wishlist', '/buyer/checkout']}
+    >
       {children}
     </DashboardShell>
   );
