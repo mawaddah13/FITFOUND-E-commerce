@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FiArrowLeft } from 'react-icons/fi';
 import pool from '@/lib/db';
 import { requireBuyerPage } from '@/lib/auth';
 import CheckoutForm from '@/components/CheckoutForm';
@@ -190,7 +191,7 @@ export default async function OrderConfirmationPage({ searchParams }) {
         {warnings.map(function buildWarning(warningText) {
           return <p key={warningText}>{warningText}</p>;
         })}
-        <Link href={backHref} className="inline-block font-semibold underline underline-offset-4">
+        <Link href={backHref} className="inline-block font-semibold hover:underline underline-offset-4">
           {backLabel}
         </Link>
       </div>
@@ -204,6 +205,14 @@ export default async function OrderConfirmationPage({ searchParams }) {
 
   return (
     <div className="pb-52 lg:pb-0">
+      <Link
+        href={backHref}
+        className="inline-flex items-center gap-1.5 mb-2 text-xs font-medium text-neutral-950 hover:underline underline-offset-4"
+      >
+        <FiArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+        {backLabel}
+      </Link>
+
       <PageHeader title="Order Confirmation" description={pageDescription} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
@@ -244,7 +253,7 @@ export default async function OrderConfirmationPage({ searchParams }) {
                         <div className="min-w-0 flex-1">
                           <Link
                             href={productHref}
-                            className="text-sm font-medium text-neutral-950 hover:underline line-clamp-2"
+                            className="text-sm font-medium text-neutral-950 hover:underline underline-offset-4 line-clamp-2"
                           >
                             {orderItem.nama_produk}
                           </Link>
@@ -263,13 +272,6 @@ export default async function OrderConfirmationPage({ searchParams }) {
               </Card>
             );
           })}
-
-          <Link
-            href={backHref}
-            className="inline-block text-xs text-neutral-800 underline underline-offset-4 hover:text-neutral-950"
-          >
-            {backLabel}
-          </Link>
         </div>
 
         <Card className="lg:sticky lg:top-28">
