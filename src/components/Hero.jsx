@@ -27,20 +27,13 @@ export default function Hero() {
             Discover styles for every part of your day
           </p>
 
-          {/* HP: tidak ada search di navbar, jadi tombolnya langsung ke All Products (ada search bar di sana) */}
+          {/* tombol langsung ke All Products (HP n desktop sama) */}
           <Link
             href="/products"
-            className="md:hidden mt-8 inline-flex items-center gap-3 px-6 py-3 bg-neutral-950 text-white text-[11px] font-medium uppercase tracking-[0.18em] hover:bg-neutral-800 transition-colors duration-300"
+            className="mt-8 inline-flex items-center gap-3 px-6 py-3 bg-neutral-950 text-white text-[11px] font-medium uppercase tracking-[0.18em] hover:bg-neutral-800 transition-colors duration-300"
           >
             Discover Collection →
           </Link>
-          {/* desktop: tetap turun ke Recommended For You */}
-          <a
-            href="#collection"
-            className="hidden md:inline-flex mt-8 items-center gap-3 px-6 py-3 bg-neutral-950 text-white text-[11px] font-medium uppercase tracking-[0.18em] hover:bg-neutral-800 transition-colors duration-300"
-          >
-            Discover Collection ↓
-          </a>
         </div>
 
         <div className="lg:col-span-5 relative h-[460px] sm:h-[520px] lg:h-full overflow-hidden">
