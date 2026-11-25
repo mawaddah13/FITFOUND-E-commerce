@@ -270,7 +270,18 @@ Jangan mengunggah `.env.local` ke GitHub. File ini sudah dikecualikan di `.gitig
 
 ### 5. Jalankan Aplikasi
 
+Pastikan `npm install` sudah dijalankan, lalu **disarankan** menjalankan versi production (lebih cepat dan sama seperti saat dipakai sungguhan):
+
 ```bash
+npm install
+npm run build
+npm run start
+```
+
+Kalau `npm run build` gagal atau ingin mode pengembangan (halaman otomatis ter-refresh saat kode diubah), jalankan:
+
+```bash
+npm install
 npm run dev
 ```
 
@@ -278,13 +289,6 @@ Buka aplikasi di browser:
 
 ```text
 http://localhost:3000
-```
-
-Untuk memeriksa build production:
-
-```bash
-npm run build
-npm run start
 ```
 
 ## 🔑 Akun Demo untuk Pengujian
