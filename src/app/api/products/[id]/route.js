@@ -1,46 +1,39 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { jsonError } from '@/lib/api';
-import { toPositiveInt } from '@/lib/validation';
 import { activeAccountSql } from '@/lib/products';
 
-// cek id produk buat ambil ringkasan produk beserta daftar ukuran n stoknya
-export async function GET(request, { params }) {
-  const resolvedParams = await params;
-  const productId = toPositiveInt(resolvedParams.id);
+// cari produk yg cocok sama ketikan di search bar
+export async function GET(request) {
+  const rawQuery = request.nextUrl.searchParams.get('q');
+  let searchKeyword = '';
+  if (rawQuery) {
+    searchKeyword = rawQuery.trim();
+  }
 
-  if (!productId) {
-    return jsonError(400, 'Product is not valid.');
+  if (searchKeyword.length < 2) {
+    return NextResponse.json({ results: [] });
+  }
+
+  if (searchKeyword.length > 100) {
+    return jsonError(400, 'Keyword is too long.');
   }
 
   try {
-    const productResult = await pool.query(
-      `SELECT p.id_product, p.nama_produk, p.harga, p.gambar, p.stok
+    const searchResult = await pool.query(
+      `SELECT p.id_product, p.nama_produk, p.harga, p.gambar, c.nama_kategori
        FROM products p
+       JOIN categories c ON c.id_category = p.id_category
        JOIN stores s ON s.id_store = p.id_store
        JOIN users su ON su.id_user = s.id_user
          AND su.role = 'seller' AND su.status = 'active' AND ${activeAccountSql('su')}
-       WHERE p.id_product = $1`,
-      [productId]
+       WHERE p.nama_produk ILIKE $1
+       ORDER BY p.stok > 0 DESC, p.nama_produk ASC`,
+      [`%${searchKeyword}%`]
     );
-    if (productResult.rows.length === 0) {
-      return jsonError(404, 'Product not found.');
-    }
-
-    const sizesResult = await pool.query(
-      `SELECT ukuran, stok
-       FROM product_sizes
-       WHERE id_product = $1
-       ORDER BY urutan ASC`,
-      [productId]
-    );
-
-    return NextResponse.json({
-      product: productResult.rows[0],
-      sizes: sizesResult.rows,
-    });
+    return NextResponse.json({ results: searchResult.rows });
   } catch (error) {
-    console.error('GET /api/products/[id] error:', error);
-    return jsonError(500, 'Failed to load product.');
+    console.error('GET /api/products/search error:', error);
+    return jsonError(500, 'Failed to search products.');
   }
 }
