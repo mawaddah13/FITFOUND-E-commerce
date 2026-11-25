@@ -3,6 +3,7 @@ import SubmitButton from '@/components/SubmitButton';
 import MultiImageInput from '@/components/MultiImageInput';
 import ProductOptionsFields from '@/components/ProductOptionsFields';
 import { Field, inputClass } from '@/components/ui';
+import FieldError from '@/components/FieldError';
 
 // tampilkan form tambah atau ubah data produk beserta ukuran, stok, n foto
 export default function ProductForm({
@@ -86,8 +87,9 @@ export default function ProductForm({
         initialSizes={sizes}
       />
 
-      <div className="p-4 rounded-xl bg-(--abumuda)">
+      <div data-field-slot="images" className="p-4 rounded-xl bg-(--abumuda)">
         <MultiImageInput existingImages={images} max={5} />
+        <FieldError name="images" />
       </div>
 
       <SubmitButton pendingText="Saving product...">{submitLabel}</SubmitButton>

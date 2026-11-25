@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ORDER_STATUS, USER_STATUS, ACCOUNT_STATUS } from '@/lib/format';
+import FieldError from '@/components/FieldError';
 
 export const inputClass =
   'w-full px-4 py-3 text-sm bg-white border border-neutral-200 rounded-xl focus:outline-none focus:border-(--biru) text-neutral-950 placeholder:text-neutral-400';
@@ -22,13 +23,15 @@ export function Card({ children, className = '' }) {
   );
 }
 
+// kolom form + label + pesan error merah tetap di bawahnya (kalau isiannya salah)
 export function Field({ label, htmlFor, hint, children }) {
   return (
-    <div>
+    <div data-field-slot={htmlFor}>
       <label htmlFor={htmlFor} className="block text-sm font-medium text-neutral-950 mb-1.5">
         {label}
       </label>
       {children}
+      <FieldError name={htmlFor} />
       {hint && <p className="text-[11px] text-neutral-950 mt-1">{hint}</p>}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import CategorySegmentPicker from '@/components/CategorySegmentPicker';
 import SizeStockFields from '@/components/SizeStockFields';
+import FieldError from '@/components/FieldError';
 
 // gabungan pilihan kategori, segmen, ukuran, n stok produk
 export default function ProductOptionsFields({
@@ -35,21 +36,24 @@ export default function ProductOptionsFields({
 
   return (
     <div className="space-y-4">
-      <div className="p-4 rounded-xl border border-neutral-200">
+      {/* data-field-slot: tempat pesan error kategori / ukuran n stok muncul */}
+      <div data-field-slot="kategori" className="p-4 rounded-xl border border-neutral-200">
         <CategorySegmentPicker
           categories={categories}
           defaultCategoryId={defaultCategoryId}
           defaultSegment={defaultSegment}
           onChange={handleSelectionChange}
         />
+        <FieldError name="kategori" />
       </div>
 
-      <div className="p-4 rounded-xl border border-neutral-200">
+      <div data-field-slot="sizes" className="p-4 rounded-xl border border-neutral-200">
         <SizeStockFields
           category={selection.category}
           segment={selection.segment}
           initialSizes={initialSizes}
         />
+        <FieldError name="sizes" />
       </div>
     </div>
   );
