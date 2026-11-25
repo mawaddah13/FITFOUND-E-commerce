@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiSliders, FiChevronDown, FiChevronLeft, FiX } from 'react-icons/fi';
+import { FiSliders, FiChevronDown, FiChevronLeft, FiX, FiSearch } from 'react-icons/fi';
 import { segmentsForCategory, sortMainCategories } from '@/data/navigation';
 
 const SEGMENTS = ['Women', 'Men', 'Kids'];
@@ -176,7 +176,7 @@ function FilterSection({ title, defaultOpen = true, children }) {
   );
 }
 
-// dropdown buat ngatur urutan produk (sort by)
+// dropdown sort by di samping kanan atas katalog (khusus desktop)
 function SortDropdown({ basePath, filters, sortOptions }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -275,9 +275,6 @@ export default function CatalogLayout({
   categories,
   sortOptions,
   title,
-  resultCount,
-  showSort = true,
-  headerAction = null,
   children,
 }) {
   const router = useRouter();
@@ -483,18 +480,16 @@ export default function CatalogLayout({
     );
   }
 
-  let resetButtonElement = null;
-  if (filters.hasFilter) {
-    resetButtonElement = (
-      <button
-        type="button"
-        onClick={handleResetFilters}
-        className="px-4 py-2.5 text-sm font-medium border border-neutral-300 rounded-xl hover:border-neutral-900 transition cursor-pointer"
-      >
-        Reset
-      </button>
-    );
-  }
+  // tombol reset selalu ada di samping apply
+  const resetButtonElement = (
+    <button
+      type="button"
+      onClick={handleResetFilters}
+      className="px-4 py-2.5 text-sm font-medium border border-neutral-300 rounded-xl hover:border-neutral-900 transition cursor-pointer"
+    >
+      Reset
+    </button>
+  );
 
   let accessoryOptionsBlock = null;
   if (accessoryCategories.length > 0) {
@@ -538,7 +533,23 @@ export default function CatalogLayout({
   const filterForm = (
     <form key={filtersKey} onSubmit={handleSubmit} className="text-neutral-900">
       <input type="hidden" name="q" value={filters.q} />
-      <input type="hidden" name="sort" value={filters.sort} />
+
+      {/* Sort by di dalam panel Filter cuma buat HP, di desktop pakai dropdown kanan atas */}
+      <div className="lg:hidden">
+        <FilterSection title="Sort by">
+          {sortOptions.map(function buildSortOption(sortOption) {
+            return (
+              <OptionItem
+                key={sortOption.value}
+                name="sort"
+                value={sortOption.value}
+                label={sortOption.label}
+                defaultChecked={filters.sort === sortOption.value}
+              />
+            );
+          })}
+        </FilterSection>
+      </div>
 
       <FilterSection title="Gender">
         <OptionItem
@@ -636,21 +647,11 @@ export default function CatalogLayout({
     );
   }
 
-  let desktopChevronClass = 'rotate-180';
-  if (desktopOpen) {
-    desktopChevronClass = '';
-  }
-
-  let headerActionElement = null;
-  if (headerAction) {
-    headerActionElement = <div className="mt-1">{headerAction}</div>;
-  }
-
-  let sortDropdownElement = null;
-  if (showSort) {
-    sortDropdownElement = (
-      <SortDropdown basePath={basePath} filters={filters} sortOptions={sortOptions} />
-    );
+  // cari produk dari kotak pencarian di atas katalog (filter lain tetap dipakai)
+  function handleSearchSubmit(submitEvent) {
+    submitEvent.preventDefault();
+    const keyword = String(new FormData(submitEvent.currentTarget).get('q') || '').trim();
+    goToFilters(buildHref(basePath, filters, { q: keyword }));
   }
 
   let activeChipsBar = null;
@@ -687,10 +688,15 @@ export default function CatalogLayout({
     catalogGridClass = 'lg:grid-cols-[250px_1fr]';
   }
 
+  let desktopChevronClass = 'rotate-180';
+  if (desktopOpen) {
+    desktopChevronClass = '';
+  }
+
   let desktopSidebarElement = null;
   if (desktopOpen) {
     desktopSidebarElement = (
-      <aside className="hidden lg:block self-start sticky top-40 max-h-[calc(100vh-11rem)] overflow-y-auto bg-white rounded-2xl border border-neutral-200/80 shadow-sm px-5 pb-3 animate-slide-from-left">
+      <aside className="hidden lg:block self-start sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto bg-white rounded-2xl border border-neutral-200/80 shadow-sm px-5 pb-3 animate-slide-from-left">
         {filterForm}
       </aside>
     );
@@ -704,7 +710,7 @@ export default function CatalogLayout({
           className="absolute inset-0 bg-black/40 animate-fade-in"
           onClick={handleCloseMobileDrawer}
         />
-        <div className="absolute left-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-xl flex flex-col animate-slide-in-left">
+        <div className="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-xl flex flex-col animate-slide-from-right">
           <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200">
             <span className="inline-flex items-center gap-2.5 text-sm font-semibold">
               <FiSliders className="w-5 h-5" aria-hidden="true" />
@@ -729,34 +735,60 @@ export default function CatalogLayout({
     <section ref={sectionRef} className="scroll-mt-32 md:scroll-mt-40">
       <h2 className="text-center text-xl md:text-2xl font-semibold text-neutral-950">{title}</h2>
 
-      <div className="mt-4 mb-6 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="justify-self-start">
-          <button
-            type="button"
-            onClick={toggleFilter}
-            aria-expanded={desktopOpen}
-            className="inline-flex items-center gap-2.5 text-sm font-semibold text-neutral-950 cursor-pointer"
-          >
-            <FiSliders className="w-5 h-5" aria-hidden="true" />
-            <span>Filter</span>
-            {filterBadgeElement}
-            <FiChevronLeft
-              aria-hidden="true"
-              className={`hidden lg:block w-4 h-4 text-neutral-600 transition-transform duration-200 ${desktopChevronClass}`}
-            />
+      {/* HP: search bar panjang + tombol Filter (sort by ada di dalam panel Filter) */}
+      <div className="lg:hidden mt-5 mb-6 flex items-center gap-3">
+        <form
+          key={filters.q}
+          onSubmit={handleSearchSubmit}
+          className="flex-1 flex items-center gap-2 bg-white border border-neutral-200 rounded-xl px-4 py-2.5 focus-within:border-neutral-900"
+        >
+          <input
+            name="q"
+            defaultValue={filters.q}
+            placeholder="Search products..."
+            aria-label="Search products"
+            className="w-full bg-transparent text-sm text-neutral-950 placeholder:text-neutral-500 focus:outline-none"
+          />
+          <button type="submit" aria-label="Search" className="shrink-0 cursor-pointer text-neutral-700 hover:text-neutral-950">
+            <FiSearch className="w-4 h-4" />
           </button>
-        </div>
+        </form>
 
-        <div className="text-center">
-          <p className="text-sm text-neutral-700">{resultCount} products</p>
-          {headerActionElement}
-        </div>
+        <button
+          type="button"
+          onClick={toggleFilter}
+          aria-expanded={mobileOpen}
+          className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-semibold text-neutral-950 hover:border-neutral-900 transition cursor-pointer"
+        >
+          <FiSliders className="w-4 h-4" aria-hidden="true" />
+          <span>Filter</span>
+          {filterBadgeElement}
+        </button>
+      </div>
 
-        <div className="justify-self-end">{sortDropdownElement}</div>
+      {/* desktop: kayak awal, Filter di kiri n Sort by di kanan (search pakai navbar) */}
+      <div className="hidden lg:flex mt-4 mb-6 items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={toggleFilter}
+          aria-expanded={desktopOpen}
+          className="inline-flex items-center gap-2.5 text-sm font-semibold text-neutral-950 cursor-pointer"
+        >
+          <FiSliders className="w-5 h-5" aria-hidden="true" />
+          <span>Filter</span>
+          {filterBadgeElement}
+          <FiChevronLeft
+            aria-hidden="true"
+            className={`w-4 h-4 text-neutral-600 transition-transform duration-200 ${desktopChevronClass}`}
+          />
+        </button>
+
+        <SortDropdown basePath={basePath} filters={filters} sortOptions={sortOptions} />
       </div>
 
       {activeChipsBar}
 
+      {/* panel filter desktop di kiri */}
       <div className={`grid grid-cols-1 gap-8 ${catalogGridClass}`}>
         {desktopSidebarElement}
         <div className="min-w-0 transition-all duration-500">{children}</div>

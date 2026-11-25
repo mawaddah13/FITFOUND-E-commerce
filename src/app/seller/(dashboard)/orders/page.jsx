@@ -7,10 +7,12 @@ import { formatRupiah, formatDate, ORDER_STATUS } from '@/lib/format';
 import { hasSize } from '@/lib/sizes';
 
 // to_confirm = masih Pending tp buyer sudah bayar, tinggal Confirm Payment
+// in_progress = sudah dikonfirmasi sampai sebelum completed (processing + shipped)
 const FILTERS = [
   'all',
   'pending',
   'to_confirm',
+  'in_progress',
   'processing',
   'shipped',
   'completed',
@@ -74,6 +76,8 @@ export default async function SellerOrdersPage({ searchParams }) {
 
   if (activeFilter === 'to_confirm') {
     queryText += " AND o.status_order = 'pending' AND o.dibayar_pada IS NOT NULL";
+  } else if (activeFilter === 'in_progress') {
+    queryText += " AND o.status_order IN ('processing', 'shipped')";
   } else if (activeFilter !== 'all') {
     queryValues.push(activeFilter);
     queryText += ` AND o.status_order = $${queryValues.length}`;
@@ -191,7 +195,7 @@ export default async function SellerOrdersPage({ searchParams }) {
       <form
         action="/seller/orders"
         method="GET"
-        className="mb-4 p-4 bg-white rounded-2xl border border-neutral-200/80 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[240px_240px_auto] gap-3 items-end"
+        className="mb-4 px-6 py-5 bg-white rounded-2xl border border-neutral-200/80 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] gap-3 items-end"
       >
         <label className="block">
           <span className="block text-xs font-medium text-neutral-950 mb-1">Status</span>
@@ -200,6 +204,8 @@ export default async function SellerOrdersPage({ searchParams }) {
               let filterLabel = 'All';
               if (filterKey === 'to_confirm') {
                 filterLabel = 'Paid — Needs Confirmation';
+              } else if (filterKey === 'in_progress') {
+                filterLabel = 'To Process (Processing & Shipped)';
               } else if (filterKey !== 'all') {
                 filterLabel = ORDER_STATUS[filterKey].label;
               }
@@ -223,7 +229,8 @@ export default async function SellerOrdersPage({ searchParams }) {
             })}
           </select>
         </label>
-        <div className="flex gap-2">
+        {/* dropdown status n sort by dipanjangkan, tombol apply n reset di kanan */}
+        <div className="flex gap-2 sm:col-span-2 lg:col-span-1 justify-end">
           <button
             type="submit"
             className="px-4 py-2.5 text-sm font-medium bg-neutral-950 text-white rounded-xl hover:bg-neutral-800 transition cursor-pointer"

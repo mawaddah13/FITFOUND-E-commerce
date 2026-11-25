@@ -10,10 +10,8 @@ export default async function SellerDashboardPage() {
 
   const resStats = await pool.query(
     `SELECT
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'pending' AND dibayar_pada IS NULL)::int AS awaiting_payment,
        (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'pending' AND dibayar_pada IS NOT NULL)::int AS to_verify,
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'processing')::int AS to_process,
-       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order = 'shipped')::int AS shipped,
+       (SELECT COUNT(*) FROM orders WHERE id_store = $1 AND status_order IN ('processing', 'shipped'))::int AS to_process,
        (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok = 0)::int AS sold_out,
        (SELECT COUNT(*) FROM products WHERE id_store = $1 AND stok BETWEEN 1 AND 5)::int AS low_stock,
        (SELECT COUNT(*) FROM products WHERE id_store = $1)::int AS total_products,
@@ -45,12 +43,8 @@ export default async function SellerDashboardPage() {
   );
   const lowStockProducts = resLowStock.rows;
 
+  // to do list cukup 4: konfirmasi bayar, diproses (sampai sebelum completed), stok menipis, stok habis
   const todoItems = [
-    {
-      label: 'Not Paid Yet',
-      value: stats.awaiting_payment,
-      href: '/seller/orders?status=pending',
-    },
     {
       label: 'Confirm Payment',
       value: stats.to_verify,
@@ -59,12 +53,7 @@ export default async function SellerDashboardPage() {
     {
       label: 'To Process',
       value: stats.to_process,
-      href: '/seller/orders?status=processing',
-    },
-    {
-      label: 'Shipped',
-      value: stats.shipped,
-      href: '/seller/orders?status=shipped',
+      href: '/seller/orders?status=in_progress',
     },
     {
       label: 'Low Stock',
@@ -156,7 +145,7 @@ export default async function SellerDashboardPage() {
           Things you need to take care of
         </p>
 
-        <div className="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 md:divide-x divide-neutral-200">
+        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 md:divide-x divide-neutral-200">
           {todoItems.map(function buildTodoItem(todoEntry) {
             let todoCountClass = 'text-2xl font-bold text-neutral-300';
             // stok menipis kuning, stok habis merah, sisanya biru

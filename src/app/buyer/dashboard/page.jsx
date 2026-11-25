@@ -6,17 +6,24 @@ import SubmitButton from '@/components/SubmitButton';
 import { PageHeader, Card, Field, StatCard, inputClass } from '@/components/ui';
 import { formatDate } from '@/lib/format';
 import PasswordInput from '@/components/PasswordInput';
+import AddressBook from '@/components/AddressBook';
+import { toPositiveInt } from '@/lib/validation';
 
 // muat statistik n data profil trs tampilkan halaman dashboard buyer
-export default async function BuyerDashboardPage() {
+export default async function BuyerDashboardPage({ searchParams }) {
   const user = await requireBuyerPage();
+  const resolvedSearchParams = await searchParams;
+
+  // alamat yg lagi diedit di bagian Shipping Addresses (?edit=id)
+  let editAddressId = null;
+  if (resolvedSearchParams && typeof resolvedSearchParams.edit === 'string') {
+    editAddressId = toPositiveInt(resolvedSearchParams.edit);
+  }
 
   const resStats = await pool.query(
     `SELECT
        (SELECT COUNT(*) FROM orders WHERE id_user = $1)::int AS total_orders,
-       (SELECT COUNT(*) FROM orders WHERE id_user = $1 AND status_order = 'completed')::int AS completed_orders,
-       (SELECT COUNT(*) FROM wishlists WHERE id_user = $1)::int AS wishlist_count,
-       (SELECT COUNT(*) FROM addresses WHERE id_user = $1)::int AS address_count`,
+       (SELECT COUNT(*) FROM orders WHERE id_user = $1 AND status_order = 'completed')::int AS completed_orders`,
     [user.id_user]
   );
   const stats = resStats.rows[0];
@@ -37,21 +44,19 @@ export default async function BuyerDashboardPage() {
     <div className="space-y-6">
       <PageHeader title="My Profile" description={memberDescription} />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard label="Total Orders" value={stats.total_orders} href="/buyer/orders" />
         <StatCard
           label="Completed"
           value={stats.completed_orders}
           href="/buyer/orders?tab=completed"
         />
-        <StatCard label="Wishlist" value={stats.wishlist_count} href="/buyer/wishlist" />
-        <StatCard label="Addresses" value={stats.address_count} href="/buyer/addresses" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card>
           <h3 className="text-base font-semibold mb-4">Account Information</h3>
-          <ActionForm action={updateProfileAction} className="space-y-4">
+          <ActionForm action={updateProfileAction} skipIfUnchanged className="space-y-4">
             <Field label="Full Name" htmlFor="nama">
               <input
                 id="nama"
@@ -100,7 +105,7 @@ export default async function BuyerDashboardPage() {
 
         <Card>
           <h3 className="text-base font-semibold mb-4">Change Password</h3>
-          <ActionForm action={changePasswordAction} resetOnSuccess className="space-y-4">
+          <ActionForm action={changePasswordAction} resetOnSuccess skipIfUnchanged className="space-y-4">
             <Field label="Current Password" htmlFor="current_password">
               <PasswordInput
                 id="current_password"
@@ -131,6 +136,9 @@ export default async function BuyerDashboardPage() {
           </ActionForm>
         </Card>
       </div>
+
+      {/* alamat pengiriman sekarang ada di My Profile (menu Addresses dihapus dari sidebar) */}
+      <AddressBook user={user} editAddressId={editAddressId} />
     </div>
   );
 }

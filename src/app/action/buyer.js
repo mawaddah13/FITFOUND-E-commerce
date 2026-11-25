@@ -212,6 +212,7 @@ export async function createAddressAction(prevState, formData) {
   );
 
   revalidatePath('/buyer/addresses');
+  revalidatePath('/buyer/dashboard');
   revalidatePath('/buyer/cart');
   return { success: 'Address added.' };
 }
@@ -248,6 +249,7 @@ export async function updateAddressAction(rawAddressId, prevState, formData) {
   }
 
   revalidatePath('/buyer/addresses');
+  revalidatePath('/buyer/dashboard');
   revalidatePath('/buyer/cart');
   return { success: 'Address updated.' };
 }
@@ -278,6 +280,7 @@ export async function setDefaultAddressAction(rawAddressId, prevState, formData)
   );
 
   revalidatePath('/buyer/addresses');
+  revalidatePath('/buyer/dashboard');
   revalidatePath('/buyer/cart');
   return { success: 'Default address updated.' };
 }
@@ -313,6 +316,7 @@ export async function deleteAddressAction(rawAddressId, prevState, formData) {
   }
 
   revalidatePath('/buyer/addresses');
+  revalidatePath('/buyer/dashboard');
   revalidatePath('/buyer/cart');
   return { success: 'Address deleted.' };
 }

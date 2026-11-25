@@ -15,12 +15,6 @@ export default async function NewProductPage() {
 
   return (
     <div className="max-w-2xl">
-      <Link
-        href="/seller/products"
-        className="text-xs text-neutral-500 hover:text-neutral-900"
-      >
-        ← Back to products
-      </Link>
       <div className="mt-2">
         <PageHeader title="Add Product" description="All fields are required." />
       </div>

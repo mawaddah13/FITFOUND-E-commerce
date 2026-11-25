@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { MAIN_SEGMENTS, buildSubMenu, getAccessoriesItems, buildCategoryHref } from '@/data/navigation';
+import { MAIN_SEGMENTS, buildCategoryHref } from '@/data/navigation';
 import LiveSearchInput from '@/components/LiveSearchInput';
 import Logo from '@/components/Logo';
+import LogoutButton from '@/components/LogoutButton';
 import { openLoginPrompt } from '@/components/LoginPrompt';
-import { FiMenu, FiX, FiUser, FiSearch, FiChevronDown, FiHeart, FiShoppingCart } from 'react-icons/fi';
+import { recordPage } from '@/lib/pageTrail';
+import { FiMenu, FiX, FiUser, FiSearch, FiHeart, FiShoppingCart } from 'react-icons/fi';
 
 const ICON_BUTTON = 'p-1 hover:opacity-70 hover:-translate-y-0.5 transition cursor-pointer';
 const DRAWER_ROW = 'flex items-center gap-3 py-3 text-sm text-neutral-800 hover:text-black';
@@ -67,7 +69,7 @@ function SearchForm({ urlSearch, onSubmit, onNavigate, inputRef, placeholder, fo
 }
 
 // navbar utama, menu kategori, pencarian, ikon belanja, drawer mobile
-export default function Navbar({ session, cartCount = 0, categories = [] }) {
+export default function Navbar({ session, cartCount = 0 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -87,6 +89,12 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     setLiveCartCount(cartCount);
   }
 
+  // catat halaman yg dibuka, dipakai breadcrumb di halaman akun (My Profile, Orders)
+  const currentQuery = searchParams.toString();
+  useEffect(() => {
+    recordPage(pathname, new URLSearchParams(currentQuery));
+  }, [pathname, currentQuery]);
+
   useEffect(() => {
     function handleCartUpdated(cartEvent) {
       if (cartEvent.detail && typeof cartEvent.detail.totalItems === 'number') {
@@ -96,16 +104,10 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     window.addEventListener('fitfound:cart-updated', handleCartUpdated);
     return () => window.removeEventListener('fitfound:cart-updated', handleCartUpdated);
   }, []);
-  const [mobileAccessoriesOpen, setMobileAccessoriesOpen] = useState(false);
-  const [drawerSegment, setDrawerSegment] = useState(activeSegment);
 
   const mobileInputRef = useRef(null);
   const scrollTopAfterNavRef = useRef(false);
 
-  const subMenu = buildSubMenu(categories);
-  const accessoryNames = categories
-    .filter((category) => category.grup_kategori === 'Accessories')
-    .map((category) => category.nama_kategori);
 
   const isSeller = session && session.role === 'seller';
   const showShoppingIcons = !session || session.role === 'buyer' || isSeller;
@@ -125,26 +127,6 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     }
   }
 
-  // cek ? nama kategori lagi aktif di katalog
-  function isKategoriActive(value) {
-    return isCatalogPage && activeKategori !== '' && activeKategori.toLowerCase() === value.toLowerCase();
-  }
-
-  const isAccessoriesActive =
-    isKategoriActive('Accessories') || accessoryNames.some((name) => isKategoriActive(name));
-
-  // tentukan alamat tujuan dan status aktif item menu baris kedua
-  function menuTarget(cat, segment) {
-    if (cat.isSpecialLink) {
-      let isActive = pathname === cat.href;
-      if (cat.href === '/products') {
-        isActive = pathname === '/products' && activeKategori === '';
-      }
-      return { href: cat.href, isActive };
-    }
-    return { href: buildCategoryHref(segment, cat.value), isActive: isKategoriActive(cat.value) };
-  }
-
   // tutup menu drawer n pencarian mobile
   function closeAllMenus() {
     setMobileMenuOpen(false);
@@ -153,17 +135,8 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
 
   // buka/tutup drawer menu tampilan mobile
   function toggleMobileMenu() {
-    if (!mobileMenuOpen) {
-      setDrawerSegment(activeSegment);
-    }
     setMobileMenuOpen(!mobileMenuOpen);
     setMobileSearchOpen(false);
-  }
-
-  // buka/tutup panel pencarian pada tampilan mobile
-  function toggleMobileSearch() {
-    setMobileSearchOpen(!mobileSearchOpen);
-    setMobileMenuOpen(false);
   }
 
   // fokus input pencarian mobile saat panel pencarian dibuka
@@ -250,18 +223,7 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     );
   }
 
-  // daftar link dropdown accessories sesuai segmen aktif
-  function renderAccessoryLinks(segment, classOn, classOff) {
-    return ['Accessories', ...getAccessoriesItems(segment, accessoryNames)].map((name) => {
-      let label = name;
-      if (name === 'Accessories') {
-        label = 'All Accessories';
-      }
-      return renderNavLink(buildCategoryHref(segment, name), label, pick(isKategoriActive(name), classOn, classOff));
-    });
-  }
-
-  // menu utama desktop: Home, All Products, Women, Men, Kids
+  // menu utama: Home, All Products, Women, Men, Kids (desktop di navbar, HP di menu hamburger)
   const desktopNavItems = [];
   for (const item of MAIN_SEGMENTS) {
     let isActive = isCatalogPage && activeSegment.toLowerCase() === item.value.toLowerCase();
@@ -278,93 +240,26 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
     }
   }
 
-  // tab segmen mobile (Home, Women, Men, Kids); saat menu hamburger terbuka tab dipakai pilih segmen
-  function renderSegmentTab(item) {
-    const segment = pick(mobileMenuOpen, drawerSegment, activeSegment);
-    let isActive = (mobileMenuOpen || isCatalogPage) && segment.toLowerCase() === item.value.toLowerCase();
-    // Home tidak ikut aktif waktu lagi di All Products
-    if (item.value === '' && pathname === '/products' && !mobileMenuOpen) {
-      isActive = false;
-    }
-    const tabClass = `px-2 py-3 whitespace-nowrap transition cursor-pointer ${pick(
-      isActive,
-      'font-bold text-neutral-950 border-b-2 border-neutral-950',
-      'font-medium text-neutral-600 hover:text-neutral-950'
-    )}`;
-
-    if (mobileMenuOpen) {
-      return (
-        <button key={item.label} type="button" onClick={() => setDrawerSegment(item.value)} className={tabClass}>
-          {item.label}
-        </button>
-      );
-    }
-    return renderNavLink(buildCategoryHref(item.value, ''), item.label, tabClass);
-  }
-
   let mobileDrawer = null;
   if (mobileMenuOpen) {
+    // menu hamburger HP: cukup Home, All Products, Women, Men, Kids (+ Wishlist), tanpa kategori n My Account
     mobileDrawer = (
-      <div className="md:hidden absolute left-0 right-0 top-full h-[calc(100vh-8.75rem)] bg-(--abumuda) border-t border-neutral-200 z-50 overflow-y-auto animate-dropdown">
+      <div className="md:hidden absolute left-0 right-0 top-full h-[calc(100vh-4rem)] bg-white border-t border-neutral-200 z-50 overflow-y-auto animate-dropdown">
         <div className="px-6 py-2 divide-y divide-neutral-200/70">
-          {subMenu.map((cat) => {
-            if (cat.hasDropdown) {
-              return (
-                <div key={cat.label}>
-                  <button
-                    type="button"
-                    onClick={() => setMobileAccessoriesOpen(!mobileAccessoriesOpen)}
-                    className="w-full flex items-center justify-between py-4 text-xs font-medium tracking-wider uppercase text-neutral-900 hover:text-neutral-600 cursor-pointer"
-                  >
-                    <span className={pick(isAccessoriesActive, 'font-bold underline underline-offset-4', '')}>
-                      {cat.label}
-                    </span>
-                    <FiChevronDown
-                      className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${pick(mobileAccessoriesOpen, 'rotate-180', '')}`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                  {mobileAccessoriesOpen && (
-                    <div className="pl-5 pb-3 space-y-1">
-                      {renderAccessoryLinks(
-                        drawerSegment,
-                        'block py-2.5 text-xs tracking-wider uppercase text-neutral-950 font-bold underline underline-offset-4',
-                        'block py-2.5 text-xs font-medium tracking-wider uppercase text-neutral-600 hover:text-neutral-950'
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            const { href, isActive } = menuTarget(cat, drawerSegment);
+          {desktopNavItems.map((item) => {
             return renderNavLink(
-              href,
-              cat.label,
-              `block py-4 text-xs tracking-wider uppercase ${pick(
-                isActive,
-                'font-bold text-neutral-950 underline underline-offset-4',
-                'font-medium text-neutral-900 hover:text-neutral-600'
+              item.href,
+              item.label,
+              `block py-4 text-sm tracking-wide ${pick(
+                item.isActive,
+                'font-semibold text-neutral-950',
+                'font-medium text-neutral-700 hover:text-neutral-950'
               )}`
             );
           })}
         </div>
 
         <div className="px-6 py-4 border-t border-neutral-200 space-y-1">
-          {showShoppingIcons && (
-            <ShopLink
-              session={session}
-              href="/buyer/wishlist"
-              label="Wishlist"
-              loginMessage="Sign in to view and save items to your wishlist."
-              onClick={closeAllMenus}
-              className={`w-full cursor-pointer ${DRAWER_ROW}`}
-            >
-              <FiHeart className="w-5 h-5 text-neutral-800" />
-              <span>Wishlist</span>
-            </ShopLink>
-          )}
-
           {isSeller && (
             <a href={sellerLink.href} onClick={closeAllMenus} className={`${DRAWER_ROW} font-semibold text-neutral-900`}>
               <span className="w-5 h-5 inline-flex items-center justify-center rounded-md bg-neutral-900 text-white text-[10px]">
@@ -374,14 +269,12 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
             </a>
           )}
 
-          <a
-            href={profileHref}
-            onClick={closeAllMenus}
-            className={`${DRAWER_ROW} ${pick(session, 'font-medium text-neutral-900', '')}`}
-          >
-            <FiUser className="w-5 h-5 text-neutral-800" aria-hidden="true" />
-            <span>{pick(session, 'My Account', 'Sign In | Register')}</span>
-          </a>
+          {/* logout di menu hamburger (Wishlist sudah jadi ikon di samping keranjang) */}
+          {session && (
+            <LogoutButton className="w-full flex items-center py-3 text-sm font-medium text-red-600 hover:text-red-700 cursor-pointer">
+              Logout
+            </LogoutButton>
+          )}
         </div>
       </div>
     );
@@ -406,7 +299,7 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
         />
       )}
 
-      <header className="w-full bg-(--abumuda) border-b border-neutral-200 sticky top-0 z-40">
+      <header className="w-full bg-white border-b border-neutral-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 md:h-20 flex items-center justify-between gap-4">
           <div className="flex items-center md:hidden">
             <button
@@ -423,12 +316,12 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
             <Logo href="/" scroll={false} onClick={() => handleNavClick('/')} />
 
             {/* baris kedua (Best Sellers, All Products, Tops, dst) dihapus, All Products pindah ke sini diapit Home n Women */}
-            <nav className="hidden md:flex items-center gap-8 text-base font-medium text-neutral-600">
+            <nav className="hidden md:flex items-center gap-8 text-base font-medium text-neutral-950">
               {desktopNavItems.map((item) => {
                 return renderNavLink(
                   item.href,
                   item.label,
-                  `link-underline transition-colors duration-200 ${pick(item.isActive, 'font-semibold text-neutral-950', 'hover:text-neutral-950')}`,
+                  `link-underline transition-colors duration-200 ${pick(item.isActive, 'font-semibold text-neutral-950', 'text-neutral-950 hover:text-black')}`,
                   { 'data-active': pick(item.isActive, 'true', 'false') }
                 );
               })}
@@ -440,21 +333,13 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
             onSubmit={handleSearchSubmit}
             onNavigate={closeAllMenus}
             placeholder="Search products..."
-            formClass="hidden md:flex w-72 lg:w-96 ml-auto items-center justify-between bg-white px-4 py-2.5 rounded-lg focus-within:ring-1 focus-within:ring-neutral-400"
+            formClass="hidden md:flex w-72 lg:w-96 ml-auto items-center justify-between bg-(--abumuda) px-4 py-2.5 rounded-lg focus-within:ring-1 focus-within:ring-neutral-400"
             inputClass="placeholder:text-neutral-400"
             iconClass="w-4 h-4"
           />
 
           <div className="flex items-center gap-2.5 md:gap-4 shrink-0">
-            <button
-              type="button"
-              onClick={toggleMobileSearch}
-              aria-label="Search Products"
-              className="md:hidden p-1 hover:opacity-70 transition cursor-pointer"
-            >
-              <FiSearch className="w-5 h-5 text-neutral-800" />
-            </button>
-
+            {/* ikon search di HP dihapus, cari produk lewat search bar di halaman All Products */}
             {showShoppingIcons && (
               <>
                 <ShopLink
@@ -463,7 +348,7 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
                   label="Wishlist"
                   loginMessage="Sign in to view and save items to your wishlist."
                   onClick={closeAllMenus}
-                  className={`hidden md:inline-flex ${ICON_BUTTON}`}
+                  className={`inline-flex ${ICON_BUTTON}`}
                 >
                   <FiHeart className="w-5 h-5 text-neutral-800" />
                 </ShopLink>
@@ -503,31 +388,15 @@ export default function Navbar({ session, cartCount = 0, categories = [] }) {
           </div>
         </div>
 
-        {/* warna tulisan tab dibuat lebih gelap (sama dgn desktop) + tab All Products */}
-        <nav className="md:hidden flex justify-between px-2 border-t border-neutral-200/70 bg-(--abumuda) text-center text-[13px] tracking-wide uppercase">
-          {/* urutan tab: Home, All Products, Women, Men, Kids */}
-          {renderSegmentTab(MAIN_SEGMENTS[0])}
-          {renderNavLink(
-            '/products',
-            'All Products',
-            `px-2 py-3 whitespace-nowrap transition cursor-pointer ${pick(
-              pathname === '/products' && activeKategori === '' && !mobileMenuOpen,
-              'font-bold text-neutral-950 border-b-2 border-neutral-950',
-              'font-medium text-neutral-600 hover:text-neutral-950'
-            )}`
-          )}
-          {MAIN_SEGMENTS.slice(1).map(renderSegmentTab)}
-        </nav>
-
         {mobileSearchOpen && (
-          <div className="md:hidden absolute left-0 right-0 top-full bg-(--abumuda) px-4 py-3 border-b border-neutral-200 shadow-lg z-50 animate-dropdown">
+          <div className="md:hidden absolute left-0 right-0 top-full bg-white px-4 py-3 border-b border-neutral-200 shadow-lg z-50 animate-dropdown">
             <SearchForm
               urlSearch={urlSearch}
               onSubmit={handleSearchSubmit}
               onNavigate={closeAllMenus}
               inputRef={mobileInputRef}
               placeholder="Search..."
-              formClass="flex items-center justify-between bg-(--abutab) px-4 py-3 rounded-lg"
+              formClass="flex items-center justify-between bg-white border border-neutral-300 px-4 py-3 rounded-lg focus-within:border-neutral-900"
               inputClass="placeholder:text-neutral-500"
               iconClass="w-5 h-5 text-neutral-800"
             />

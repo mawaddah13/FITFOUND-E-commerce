@@ -5,8 +5,8 @@ export default function Footer() {
   return (
     <footer className="w-full bg-white text-black mt-16 border-t border-neutral-500">
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8 md:pt-12 pb-6 md:pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 pb-10 border-b border-black">
-          <div className="md:col-span-5 space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-x-6 gap-y-7 md:gap-10 pb-8 md:pb-10 border-b border-black">
+          <div className="col-span-2 md:col-span-5 space-y-3 md:space-y-4">
             <Logo href="/" />
 
             <p className="text-xs text-black max-w-sm">
@@ -16,15 +16,15 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="md:col-span-2 space-y-3">
+          <div className="col-span-1 md:col-span-2 space-y-2.5 md:space-y-3">
             <h3 className="text-xs font-semibold tracking-wider uppercase text-black">
               Shop
             </h3>
-            <ul className="space-y-2.5 text-xs text-black">
+            <ul className="space-y-2 text-xs text-black">
               <li>
                 <Link
                   href="/?segment=Women"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Women
                 </Link>
@@ -32,7 +32,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/?segment=Men"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Men
                 </Link>
@@ -40,7 +40,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/?segment=Kids"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Kids
                 </Link>
@@ -48,7 +48,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/products"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   All Products
                 </Link>
@@ -56,15 +56,15 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-2 space-y-3">
+          <div className="col-span-1 md:col-span-2 space-y-2.5 md:space-y-3">
             <h3 className="text-xs font-semibold tracking-wider uppercase text-black">
               Categories
             </h3>
-            <ul className="space-y-2.5 text-xs text-black">
+            <ul className="space-y-2 text-xs text-black">
               <li>
                 <Link
                   href="/?kategori=Tops"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Tops
                 </Link>
@@ -72,7 +72,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/?kategori=Bottoms"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Bottoms
                 </Link>
@@ -80,7 +80,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/?kategori=Outerwear"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Outerwear
                 </Link>
@@ -88,7 +88,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/?kategori=Shoes"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Shoes
                 </Link>
@@ -96,15 +96,15 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-3 space-y-3">
+          <div className="col-span-2 md:col-span-3 space-y-2.5 md:space-y-3">
             <h3 className="text-xs font-semibold tracking-wider uppercase text-black">
               Account & Seller
             </h3>
-            <ul className="space-y-2.5 text-xs text-black">
+            <ul className="space-y-2 text-xs text-black">
               <li>
                 <Link
                   href="/login"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Sign In
                 </Link>
@@ -112,7 +112,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/register"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Create Buyer Account
                 </Link>
@@ -120,7 +120,7 @@ export default function Footer() {
               <li>
                 <Link
                   href="/register"
-                  className="link-underline transition-colors duration-200 hover:text-black"
+                  className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Open a Store (Seller)
                 </Link>

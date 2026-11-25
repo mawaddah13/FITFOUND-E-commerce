@@ -6,10 +6,9 @@ import DashboardShell from '@/components/DashboardShell';
 export default async function BuyerLayout({ children }) {
   const user = await requireBuyerPage();
 
+  // Shopping Cart n Wishlist tidak ada di sidebar akun (sudah ada ikonnya di navbar), Addresses masuk ke My Profile
   const resCounts = await pool.query(
     `SELECT
-       (SELECT COALESCE(SUM(ci.jumlah), 0) FROM cart_items ci
-          JOIN carts c ON c.id_cart = ci.id_cart WHERE c.id_user = $1)::int AS cart_count,
        (SELECT COUNT(*) FROM orders WHERE id_user = $1 AND status_order IN ('pending','processing','shipped'))::int AS active_orders`,
     [user.id_user]
   );
@@ -17,10 +16,7 @@ export default async function BuyerLayout({ children }) {
 
   const navLinks = [
     { href: '/buyer/dashboard', label: 'My Profile' },
-    { href: '/buyer/cart', label: 'Shopping Cart', badge: counts.cart_count },
     { href: '/buyer/orders', label: 'Orders & Tracking', badge: counts.active_orders },
-    { href: '/buyer/wishlist', label: 'Wishlist' },
-    { href: '/buyer/addresses', label: 'Addresses' },
   ];
 
   const accountSubtitle = 'Buyer Account';
@@ -31,6 +27,7 @@ export default async function BuyerLayout({ children }) {
       subtitle={accountSubtitle}
       links={navLinks}
       plainPaths={['/buyer/cart', '/buyer/wishlist', '/buyer/checkout']}
+      fullSidebar
     >
       {children}
     </DashboardShell>
