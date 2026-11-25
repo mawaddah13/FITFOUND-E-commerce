@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/images/logo.png" alt="Logo FITFOUND" width="220" />
 
-  <h1>FITFOUND — Fashion E-Commerce</h1>
+  <h1>FITFOUND Fashion E-Commerce</h1>
 
   <strong>Find Your Fit, Find Your Own Style</strong>
 
@@ -25,12 +25,9 @@
 - [Alur Pesanan & Verifikasi Seller](#-alur-pesanan--verifikasi-seller)
 - [Tingkat Pengguna](#-tingkat-pengguna)
 - [Teknologi](#️-teknologi-yang-digunakan)
-- [Server Actions vs Route Handlers](#-server-actions-vs-route-handlers)
 - [Struktur Direktori](#️-struktur-direktori)
 - [Instalasi](#️-panduan-instalasi-dan-menjalankan-project)
 - [Akun Demo](#-akun-demo-untuk-pengujian)
-- [Pengujian](#-skenario-pengujian-utama)
-- [Catatan Keamanan](#-catatan-keamanan)
 
 ## 👗 Tentang FITFOUND
 
@@ -40,9 +37,9 @@ Nama **FITFOUND** berasal dari gabungan kata *fit* dan *found*: setiap orang bis
 
 FITFOUND dibangun dengan tiga prinsip:
 
-- **Belanja yang jelas** — ukuran disesuaikan per kategori, stok per ukuran, dan status pesanan yang bisa dilacak.
-- **Toko yang terpercaya** — setiap seller wajib mengirim data pribadi, data toko, serta foto KTP dan selfie sebelum disetujui Admin.
-- **Pengelolaan yang tegas** — Admin dapat menonaktifkan atau men-suspend akun, dan produk dari toko yang bermasalah otomatis disembunyikan dari pembeli.
+- **Belanja yang jelas**: ukuran disesuaikan per kategori, stok per ukuran, dan status pesanan yang bisa dilacak.
+- **Toko yang terpercaya**: setiap seller wajib mengirim data pribadi, data toko, serta foto KTP dan selfie sebelum disetujui Admin.
+- **Pengelolaan yang tegas**: Admin dapat menonaktifkan atau men-suspend akun, dan produk dari toko yang bermasalah otomatis disembunyikan dari pembeli.
 
 ## ✨ Fitur Utama Sistem
 
@@ -58,12 +55,12 @@ FITFOUND dibangun dengan tiga prinsip:
 ### 2. 🔐 Autentikasi dan Hak Akses
 
 - Login untuk **Admin, Seller, dan Buyer** dalam satu halaman (tab Sign In / Sign Up), tanpa navbar dan footer.
-- Pengunjung bisa memilih **Continue as Guest** untuk langsung berbelanja tanpa login.
+- Pengunjung bisa memilih **Continue as Guest** untuk langsung menjelajahi produk tanpa login.
 - Registrasi **Buyer** cukup nama, email, dan password.
 - Registrasi **Seller** dibuat **3 tahap** dengan indikator tahap:
-  1. **Personal Info** — nama lengkap, email, nomor HP.
-  2. **Store Info** — nama toko, alamat toko, deskripsi (opsional).
-  3. **Verification** — foto KTP, selfie memegang KTP, password, dan konfirmasi password.
+  1. **Personal Info**: nama lengkap, email, nomor HP.
+  2. **Store Info**: nama toko, alamat toko, deskripsi (opsional).
+  3. **Verification**: foto KTP, selfie memegang KTP, password, dan konfirmasi password.
 - Akses halaman `/admin`, `/seller`, dan `/buyer` dibatasi per peran di sisi server (`src/middleware.js` + pengecekan ulang di setiap halaman dan action).
 - Akun **Inactive** atau **Suspended** tidak bisa login dan akan melihat pop up berisi alasan serta batas waktu suspend.
 
@@ -73,7 +70,7 @@ FITFOUND dibangun dengan tiga prinsip:
 - Kelola keranjang (+/−, hapus dengan konfirmasi) dan **checkout hanya barang yang dicentang**. Pesanan otomatis **dipecah per toko**.
 - **Wishlist** untuk menyimpan produk favorit.
 - **Alamat pengiriman** maksimal 2, bisa dipilih sebagai alamat default.
-- Seller juga bisa berbelanja, tetapi **tidak bisa membeli produk dari tokonya sendiri**.
+- Akun **Seller** khusus untuk mengelola toko. Halaman belanja (Home, katalog, keranjang) otomatis diarahkan ke Seller Center.
 
 ### 4. 📦 Pesanan dan Tracking
 
@@ -121,12 +118,12 @@ FITFOUND dibangun dengan tiga prinsip:
 Buyer checkout (pesanan dipecah per toko)
               │
               ▼
-   Pending — Awaiting Payment ──► Buyer batal ──► Cancelled (stok kembali)
+   Pending (Awaiting Payment) ──► Buyer batal ──► Cancelled (stok kembali)
               │
         Buyer klik Pay Now
               │
               ▼
-   Pending — Paid, perlu konfirmasi
+   Pending (Paid, perlu konfirmasi)
               │
      Seller klik Confirm Payment
               │
@@ -168,14 +165,14 @@ Daftar Seller (3 tahap + foto KTP & selfie)
 | Role | Hak Akses Utama |
 |---|---|
 | **Admin** | Mengelola akun dan kategori, memverifikasi seller, memantau statistik, serta menghapus produk yang melanggar. |
-| **Seller** | Mengelola profil toko, produk, dan pesanan masuk tokonya sendiri. Juga bisa berbelanja di toko lain. |
+| **Seller** | Mengelola profil toko, produk, dan pesanan masuk tokonya sendiri (tidak berbelanja). |
 | **Buyer** | Berbelanja, mengelola keranjang, wishlist, alamat, pesanan, serta memberi rating dan ulasan. |
 | **Guest** | Menjelajahi katalog, detail produk, dan halaman toko tanpa bisa bertransaksi. |
 
 **Aturan status akun:**
-- **Active** — akun aktif dan bisa login sesuai perannya.
-- **Inactive** — akun dinonaktifkan. Saat login muncul pop up informasi, dan produk tokonya (jika seller) disembunyikan.
-- **Suspended** — akun diblokir sementara dengan alasan dan durasi. Produk tokonya disembunyikan, dan akses otomatis kembali saat masa suspend berakhir.
+- **Active**: akun aktif dan bisa login sesuai perannya.
+- **Inactive**: akun dinonaktifkan. Saat login muncul pop up informasi, dan produk tokonya (jika seller) disembunyikan.
+- **Suspended**: akun diblokir sementara dengan alasan dan durasi. Produk tokonya disembunyikan, dan akses otomatis kembali saat masa suspend berakhir.
 
 **Aturan produk:**
 - Ukuran menyesuaikan kategori: pakaian XS–XXL (Kids 2Y–12Y), sepatu Women 35–40 / Men 39–44 / Kids 26–34.
@@ -193,42 +190,6 @@ Daftar Seller (3 tahap + foto KTP & selfie)
 | Database | **PostgreSQL** | Penyimpanan pengguna, toko, produk, keranjang, pesanan, dan ulasan. |
 | Database Driver | **node-postgres (`pg`)** | Koneksi PostgreSQL dan eksekusi parameterized Raw SQL. |
 | Password Hashing | **bcryptjs** | Hash dan verifikasi password pengguna. |
-
-## 🔀 Server Actions vs Route Handlers
-
-### Server Actions (`src/app/action/*.js`)
-
-| File | Action |
-|---|---|
-| `auth.js` | login, register (buyer & seller 3 tahap), logout, hapus akun seller yang ditolak, *Continue as Seller* |
-| `buyer.js` | perbarui profil, ganti password, tambah/ubah/hapus/set default alamat, kirim ulasan |
-| `order.js` | checkout, Pay Now, batalkan pesanan, konfirmasi diterima, seller perbarui status pesanan |
-| `seller.js` | perbarui profil toko (+upload foto), tambah/ubah/hapus produk (+upload foto) |
-| `admin.js` | approve/reject seller (dengan alasan), edit user (status akun & reset password), hapus user, CRUD kategori, hapus produk melanggar |
-
-### Route Handlers (`src/app/api/**/route.js`)
-
-| Endpoint | Method | Kegunaan |
-|---|---|---|
-| `/api/cart` | GET, POST | lihat isi keranjang (JSON), tambah produk ke keranjang |
-| `/api/cart/[id]` | PATCH, DELETE | ubah jumlah item, hapus item keranjang |
-| `/api/wishlist` | GET, POST | daftar wishlist, tambah ke wishlist |
-| `/api/wishlist/[productId]` | DELETE | hapus dari wishlist |
-| `/api/products/search?q=` | GET | saran produk untuk live search |
-| `/api/products/[id]` | GET | detail produk, ukuran, dan stok (dipakai pop up pilih ukuran) |
-
-### Alasan Pembagian
-
-**Server Action** dipakai untuk **form yang mengubah data lalu halaman perlu di-render ulang atau berpindah halaman**, misalnya login/register, checkout, CRUD produk dan kategori, verifikasi seller, edit user, profil, alamat, ulasan, dan status pesanan.
-- Form langsung memanggil fungsi server tanpa membuat endpoint dan `fetch` manual.
-- Hasil validasi (`{ error }` / `{ success }`) langsung tampil lewat `useActionState`, sebagai pesan di form atau toast.
-- Setelah berhasil cukup `revalidatePath()` / `redirect()`, sehingga data di Server Component ikut diperbarui.
-- Cocok untuk upload file (`FormData`) dan alur yang memakai transaksi (checkout).
-
-**Route Handler** dipakai untuk **interaksi kecil dan cepat dari Client Component yang tidak perlu pindah halaman, serta request GET yang dipanggil berulang**:
-- **Keranjang dan wishlist** dipanggil dari banyak tempat (kartu produk, detail produk, halaman cart). Respons JSON kecil (jumlah item, total harga) cukup untuk memperbarui UI tanpa me-render ulang halaman.
-- **Live search** adalah request **GET** yang dikirim setiap user mengetik (dengan debounce dan `AbortController`). Server Action selalu berupa `POST` dan dijalankan berurutan, jadi tidak cocok untuk ini.
-- **Detail produk** diambil saat pop up pilih ukuran dibuka dari kartu produk.
 
 ## 🗃️ Struktur Direktori
 
@@ -293,8 +254,8 @@ npm install
 1. Buka **pgAdmin 4**, klik kanan `Databases` → `Create` → `Database...`, lalu buat database bernama **`fitfound`**.
 2. Klik kanan database **`fitfound`** → **Query Tool**.
 3. Buka dan jalankan (**F5**) file berikut **secara berurutan**:
-   1. **`schema.sql`** — membuat 14 tabel, relasi, dan index. **Perhatian:** file ini menghapus (DROP) tabel lama beserta isinya.
-   2. **`seed.sql`** — mengisi kategori, akun demo, toko, produk, foto, pesanan, riwayat status, dan ulasan.
+   1. **`schema.sql`**: membuat 14 tabel, relasi, dan index. **Perhatian:** file ini menghapus (DROP) tabel lama beserta isinya.
+   2. **`seed.sql`**: mengisi kategori, akun demo, toko, produk, foto, pesanan, riwayat status, dan ulasan.
 
 ### 4. Konfigurasi Environment
 
@@ -348,38 +309,10 @@ Semua password akun demo disimpan sebagai hash `bcryptjs`. Data demo dilengkapi 
 | **Buyer** | Nadia Kirana | `inactive@fitfound.com` | `buyer123` | **Inactive**. Muncul pop up saat login. |
 | **Guest** | - | - | - | Jelajah Home, katalog, detail produk, dan halaman toko tanpa login. |
 
-## 🧪 Skenario Pengujian Utama
-
-| No. | Skenario | Hasil yang Diharapkan |
-|---|---|---|
-| 1 | Guest membuka Home dan All Products. | Produk, filter, sorting, dan live search bisa dipakai tanpa login. |
-| 2 | Guest menekan Add to Cart atau Wishlist. | Muncul pop up yang meminta login. |
-| 3 | Seller mendaftar lewat 3 tahap tanpa mengisi foto KTP. | Tidak bisa lanjut. Muncul peringatan pada tahap Verification. |
-| 4 | Admin me-reject seller pending tanpa alasan. | Ditolak. Alasan wajib diisi, lalu muncul konfirmasi "Reject [nama toko]?". |
-| 5 | Admin meng-approve seller pending. | Seller melihat pop up "Your store has been approved!" saat masuk berikutnya. |
-| 6 | Buyer checkout barang dari dua toko. | Pesanan dipecah menjadi dua dan stok berkurang sesuai jumlah. |
-| 7 | Buyer membatalkan pesanan yang belum dibayar. | Status menjadi Cancelled dan stok bertambah kembali. |
-| 8 | Seller menghapus produk yang ada di pesanan aktif. | Produk tidak terhapus. Muncul toast peringatan. |
-| 9 | Buyer memberi ulasan sebelum pesanan Completed. | Ulasan ditolak. Baru bisa setelah pesanan selesai. |
-| 10 | Seller mencoba membeli produk dari tokonya sendiri. | Ditolak dengan pesan peringatan. |
-| 11 | Akun suspended/inactive mencoba login. | Login ditolak dan muncul pop up berisi alasan. |
-| 12 | User membuka halaman milik role lain (misal buyer ke `/admin`). | Server menolak akses dan mengarahkan ke halaman yang sesuai. |
-| 13 | Menyimpan form tanpa mengubah isinya. | Tidak ada request dan tidak ada notifikasi. |
-
-## 📌 Catatan Keamanan
-
-- Jangan pernah commit `.env.local`, password PostgreSQL pribadi, atau secret session ke repositori publik.
-- Password disimpan sebagai hash **bcryptjs**, bukan plaintext.
-- Sesi berupa cookie `httpOnly` yang ditandatangani **HMAC-SHA256** (`src/lib/token.js`) dan berlaku 1 hari.
-- Setiap request mengecek ulang akun di database. Akun yang dinonaktifkan atau di-suspend langsung kehilangan akses, dan suspend otomatis berakhir saat waktunya habis.
-- Otorisasi dan validasi selalu dijalankan di server pada setiap Server Action dan Route Handler. Seller hanya bisa mengubah produk dan pesanan tokonya sendiri, dan buyer hanya bisa mengubah keranjang dan pesanannya sendiri.
-- Semua query memakai **parameterized Raw SQL** (`$1`, `$2`, dst.) untuk mencegah SQL Injection.
-- Checkout memakai transaksi PostgreSQL dan `SELECT ... FOR UPDATE` agar stok tetap konsisten.
-
 ---
 
 <div align="center">
-  <sub>FITFOUND — Find Your Fit, Find Your Own Style</sub>
+  <sub>FITFOUND · Find Your Fit, Find Your Own Style</sub>
   <br />
   <sub>Tugas Final Praktikum Pemrograman Web 2026</sub>
 </div>
