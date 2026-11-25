@@ -45,6 +45,7 @@ export default async function StorePage({ params, searchParams }) {
     activeTab = 'reviews';
   }
 
+  // baca filter kategori n urutan; kalau urutan tidak dikenal, balik ke 'newest'
   const selectedCategory = readParam(resolvedQuery, 'kategori');
   let selectedSort = readParam(resolvedQuery, 'sort');
   if (!SORT_OPTIONS[selectedSort]) {
@@ -69,8 +70,7 @@ export default async function StorePage({ params, searchParams }) {
     `SELECT
        (SELECT COUNT(*) FROM products WHERE id_store = $1)::int AS total_products,
        (SELECT COUNT(*) FROM reviews r JOIN products p ON p.id_product = r.id_product WHERE p.id_store = $1)::int AS total_reviews,
-       (SELECT COALESCE
-  // baca filter kategori n urutan; kalau urutan tidak dikenal, balik ke 'newest'(AVG(r.rating), 0) FROM reviews r JOIN products p ON p.id_product = r.id_product WHERE p.id_store = $1) AS avg_rating,
+       (SELECT COALESCE(AVG(r.rating), 0) FROM reviews r JOIN products p ON p.id_product = r.id_product WHERE p.id_store = $1) AS avg_rating,
        (SELECT COALESCE(SUM(oi.jumlah), 0) FROM order_items oi JOIN orders o ON o.id_order = oi.id_order
           WHERE o.id_store = $1 AND o.status_order = 'completed')::int AS items_sold`,
     [storeId]
