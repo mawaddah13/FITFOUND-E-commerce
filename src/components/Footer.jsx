@@ -23,7 +23,7 @@ export default function Footer() {
             <ul className="space-y-2 text-xs text-black">
               <li>
                 <Link
-                  href="/?segment=Women"
+                  href="/products?segment=Women"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Women
@@ -31,7 +31,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/?segment=Men"
+                  href="/products?segment=Men"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Men
@@ -39,7 +39,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/?segment=Kids"
+                  href="/products?segment=Kids"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Kids
@@ -63,7 +63,7 @@ export default function Footer() {
             <ul className="space-y-2 text-xs text-black">
               <li>
                 <Link
-                  href="/?kategori=Tops"
+                  href="/products?kategori=Tops"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Tops
@@ -71,7 +71,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/?kategori=Bottoms"
+                  href="/products?kategori=Bottoms"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Bottoms
@@ -79,7 +79,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/?kategori=Outerwear"
+                  href="/products?kategori=Outerwear"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Outerwear
@@ -87,7 +87,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/?kategori=Shoes"
+                  href="/products?kategori=Shoes"
                   className="hover:underline underline-offset-4 hover:text-black transition"
                 >
                   Shoes

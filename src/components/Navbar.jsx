@@ -244,22 +244,24 @@ export default function Navbar({ session, cartCount = 0 }) {
   if (mobileMenuOpen) {
     // menu hamburger HP: cukup Home, All Products, Women, Men, Kids (+ Wishlist), tanpa kategori n My Account
     mobileDrawer = (
-      <div className="md:hidden absolute left-0 right-0 top-full h-[calc(100vh-4rem)] bg-white border-t border-neutral-200 z-50 overflow-y-auto animate-dropdown">
-        <div className="px-6 py-2 divide-y divide-neutral-200/70">
+      <div className="md:hidden absolute left-0 right-0 top-full max-h-[calc(100vh-4rem)] bg-white border-t border-neutral-200 shadow-lg rounded-b-2xl z-50 overflow-y-auto animate-dropdown">
+        {/* menu yg lagi dibuka diberi latar hitam, sama kayak menu admin/seller */}
+        <div className="px-4 py-2 space-y-1">
           {desktopNavItems.map((item) => {
             return renderNavLink(
               item.href,
               item.label,
-              `block py-4 text-sm tracking-wide ${pick(
+              `block px-3 py-3 rounded-xl text-sm tracking-wide transition ${pick(
                 item.isActive,
-                'font-semibold text-neutral-950',
-                'font-medium text-neutral-700 hover:text-neutral-950'
+                'font-semibold bg-neutral-950 text-white',
+                'font-medium text-neutral-700 hover:bg-(--abutab) hover:text-neutral-950'
               )}`
             );
           })}
         </div>
 
-        <div className="px-6 py-4 border-t border-neutral-200 space-y-1">
+        {(isSeller || session) && (
+        <div className="px-4 py-2 border-t border-neutral-200 space-y-1">
           {isSeller && (
             <a href={sellerLink.href} onClick={closeAllMenus} className={`${DRAWER_ROW} font-semibold text-neutral-900`}>
               <span className="w-5 h-5 inline-flex items-center justify-center rounded-md bg-neutral-900 text-white text-[10px]">
@@ -271,11 +273,12 @@ export default function Navbar({ session, cartCount = 0 }) {
 
           {/* logout di menu hamburger (Wishlist sudah jadi ikon di samping keranjang) */}
           {session && (
-            <LogoutButton className="w-full flex items-center py-3 text-sm font-medium text-red-600 hover:text-red-700 cursor-pointer">
+            <LogoutButton className="w-full flex items-center px-3 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 cursor-pointer">
               Logout
             </LogoutButton>
           )}
         </div>
+        )}
       </div>
     );
   }

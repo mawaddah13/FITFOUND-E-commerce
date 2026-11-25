@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import pool from '@/lib/db';
 import { requireCompleteSellerPage } from '@/lib/sellerProfile';
 import { createProductAction } from '@/app/action/seller';

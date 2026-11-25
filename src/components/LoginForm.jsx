@@ -227,7 +227,7 @@ export default function LoginForm({ nextPath = '', notice = '', onSwitch }) {
           {'Just browsing? '}
           <Link
             href="/"
-            className="text-red-400 font-medium hover:underline underline-offset-4 hover:text-red-600"
+            className="text-blue-500 font-medium hover:underline underline-offset-4 hover:text-blue-700"
           >
             Continue as Guest
           </Link>

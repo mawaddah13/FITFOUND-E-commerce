@@ -10,7 +10,7 @@ const heroSerif = Instrument_Serif({
 export default function Hero() {
   return (
     <section className="w-full bg-(--abuhero) border-b border-neutral-200/80 overflow-hidden">
-      <div className="w-full max-w-[1200px] mx-auto px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 lg:h-[540px]">
+      <div className="w-full max-w-[1200px] mx-auto px-6 md:px-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 lg:h-[calc(100svh-5rem)] lg:min-h-[540px]">
         <div className="lg:col-span-7 self-center pt-12 lg:pt-0 lg:pb-10">
           <h1
             className={`${heroSerif.className} text-[56px] sm:text-7xl lg:text-[88px] font-normal uppercase leading-[0.9] tracking-tight text-neutral-950`}

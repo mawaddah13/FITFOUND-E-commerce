@@ -88,10 +88,11 @@ export default async function HomePage({ searchParams }) {
     recommendedSection = (
       <section className="mb-12 pb-10 border-b border-neutral-200/70">
         <div className="text-center mb-6">
-          <h2 className="text-xl md:text-2xl font-semibold text-neutral-950">
+          {/* judul dibesarkan di desktop supaya lebih menonjol */}
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-neutral-950">
             Recommended For You
           </h2>
-          <p className="mt-1 text-sm text-neutral-950">
+          <p className="mt-2 text-sm md:text-base text-neutral-700">
             Picked at random every time you open this page.
           </p>
         </div>
@@ -127,13 +128,10 @@ export default async function HomePage({ searchParams }) {
         {/* New Arrivals tanpa Filter n Sort by, filter ada di All Products */}
         <section>
           <div className="text-center mb-6">
-            <h2 className="text-xl md:text-2xl font-semibold text-neutral-950">New Arrivals</h2>
-            <Link
-              href="/products"
-              className="inline-block mt-1 text-xs font-medium text-neutral-950 underline underline-offset-4 hover:text-black"
-            >
-              View All Products
-            </Link>
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-neutral-950">New Arrivals</h2>
+            <p className="mt-2 text-sm md:text-base text-neutral-700">
+              Fresh pieces that just landed in our stores.
+            </p>
           </div>
           {productGridContent}
         </section>

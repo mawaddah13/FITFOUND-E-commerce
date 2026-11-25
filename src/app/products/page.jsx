@@ -10,6 +10,13 @@ import {
   sortOptionsForClient,
 } from '@/lib/catalog';
 
+// kalimat di bawah judul Women / Men / Kids
+const SEGMENT_DESCRIPTIONS = {
+  Women: 'Elegant pieces and everyday essentials made for her.',
+  Men: 'Smart, comfortable styles for every part of his day.',
+  Kids: 'Cute and comfy outfits for your little ones.',
+};
+
 // ambil data filter trs tampilkan halaman katalog produk
 export default async function ProductsPage({ searchParams }) {
   const session = await getSession();
@@ -28,15 +35,18 @@ export default async function ProductsPage({ searchParams }) {
     console.error('Failed to load all products:', error.message);
   }
 
+  // judul + satu kalimat keterangan di bawahnya (kayak Recommended For You di Home)
+  // filter kategori tidak mengubah judul, tetap judul bawaan halamannya (All Products / Women / Men / Kids)
   let pageTitle = 'All Products';
+  let pageDescription = 'Browse every piece from all our trusted stores in one place.';
   if (filters.q) {
     pageTitle = `Results for "${filters.q}"`;
-  } else if (filters.segment && filters.kategori) {
-    pageTitle = `${filters.segment} — ${filters.kategori}`;
-  } else if (filters.kategori) {
-    pageTitle = filters.kategori;
+    pageDescription = 'Products that match what you are looking for.';
   } else if (filters.segment) {
     pageTitle = `${filters.segment} Collection`;
+    if (SEGMENT_DESCRIPTIONS[filters.segment]) {
+      pageDescription = SEGMENT_DESCRIPTIONS[filters.segment];
+    }
   }
 
   let productGrid = null;
@@ -73,7 +83,8 @@ export default async function ProductsPage({ searchParams }) {
   }
 
   return (
-    <div className="min-h-screen bg-(--abumuda) text-neutral-900">
+    // scroll-mt: pas dibuka dari footer, judul tidak ketutup navbar yg sticky
+    <div className="min-h-screen bg-(--abumuda) text-neutral-900 scroll-mt-16 md:scroll-mt-20">
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-10">
         <CatalogLayout
           basePath="/products"
@@ -81,6 +92,7 @@ export default async function ProductsPage({ searchParams }) {
           categories={categories}
           sortOptions={sortOptionsForClient()}
           title={pageTitle}
+          description={pageDescription}
           resultCount={products.length}
         >
           {productGrid}

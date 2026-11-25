@@ -275,6 +275,7 @@ export default function CatalogLayout({
   categories,
   sortOptions,
   title,
+  description = '',
   children,
 }) {
   const router = useRouter();
@@ -733,7 +734,11 @@ export default function CatalogLayout({
 
   return (
     <section ref={sectionRef} className="scroll-mt-32 md:scroll-mt-40">
-      <h2 className="text-center text-xl md:text-2xl font-semibold text-neutral-950">{title}</h2>
+      <h2 className="text-center text-2xl md:text-3xl lg:text-4xl font-semibold text-neutral-950">{title}</h2>
+      {/* satu kalimat keterangan di bawah judul */}
+      {description && (
+        <p className="mt-2 text-center text-sm md:text-base text-neutral-700">{description}</p>
+      )}
 
       {/* HP: search bar panjang + tombol Filter (sort by ada di dalam panel Filter) */}
       <div className="lg:hidden mt-5 mb-6 flex items-center gap-3">
