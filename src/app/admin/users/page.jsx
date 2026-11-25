@@ -28,7 +28,10 @@ export default async function AdminUsersPage({ searchParams }) {
   }
 
   let queryText = `
-    SELECT u.id_user, u.nama, u.email, u.no_hp, u.role, u.status, u.status_akun, u.suspend_sampai, u.created_at, s.nama_toko
+    SELECT u.id_user, u.nama, u.email, u.no_hp, u.role, u.status, u.status_akun, u.suspend_sampai, u.created_at, s.nama_toko,
+           (SELECT COUNT(*) FROM orders o
+            WHERE (o.id_store = s.id_store OR o.id_user = u.id_user)
+              AND o.status_order IN ('pending', 'processing', 'shipped'))::int AS active_orders
     FROM users u
     LEFT JOIN stores s ON s.id_user = u.id_user
     WHERE 1 = 1`;
@@ -102,11 +105,24 @@ export default async function AdminUsersPage({ searchParams }) {
       let deleteFormElement = null;
       if (!isSelf) {
         const boundDeleteUserAction = deleteUserAction.bind(null, userItem.id_user);
-        const deleteConfirmText = `Delete ${userItem.nama} permanently?`;
+        const deleteConfirmText = `Are you sure you want to delete ${userItem.nama}?`;
+
+        // seller / buyer yg masih punya pesanan aktif: kasih tanda kuning, hapusnya nanti ditolak lewat toast
+        let activeOrderBadge = null;
+        if (userItem.active_orders > 0) {
+          activeOrderBadge = (
+            <span className="self-center whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-semibold text-amber-700">
+              In {userItem.active_orders} active order(s)
+            </span>
+          );
+        }
 
         deleteFormElement = (
+          <>
+          {activeOrderBadge}
           <ActionForm
             action={boundDeleteUserAction}
+            messageAsToast
             confirmMessage={deleteConfirmText}
             confirmDescription="All of their data (store, products, orders, reviews) will be removed and cannot be restored. To only block access, edit the user and set the account to Suspended instead."
           >
@@ -114,6 +130,7 @@ export default async function AdminUsersPage({ searchParams }) {
               Delete
             </SubmitButton>
           </ActionForm>
+          </>
         );
       }
 

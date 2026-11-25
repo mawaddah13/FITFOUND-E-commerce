@@ -39,8 +39,17 @@ export default async function AdminCategoriesPage() {
           {categories.map(function buildCategoryRow(categoryItem) {
             const boundUpdateAction = updateCategoryAction.bind(null, categoryItem.id_category);
             const boundDeleteAction = deleteCategoryAction.bind(null, categoryItem.id_category);
-            const deletePromptText = `Delete category "${categoryItem.nama_kategori}"?`;
             const productCountLabel = `${categoryItem.product_count} product(s)`;
+
+            // tanda kuning kalau kategori masih dipakai produk (tidak bisa dihapus)
+            let inUseBadge = null;
+            if (categoryItem.product_count > 0) {
+              inUseBadge = (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-semibold text-amber-700">
+                  In use by {categoryItem.product_count} product(s)
+                </span>
+              );
+            }
 
             return (
               <div
@@ -71,10 +80,18 @@ export default async function AdminCategoriesPage() {
                       Save
                     </SubmitButton>
                   </div>
-                  <p className="text-[11px] text-neutral-400 mt-1">{productCountLabel}</p>
+                  <p className="text-[11px] text-neutral-400 mt-1 flex items-center gap-2">
+                    {productCountLabel}
+                    {inUseBadge}
+                  </p>
                 </ActionForm>
 
-                <ActionForm action={boundDeleteAction} confirmMessage={deletePromptText}>
+                <ActionForm
+                  action={boundDeleteAction}
+                  messageAsToast
+                  confirmMessage="Are you sure you want to delete this category?"
+                  confirmDescription={`"${categoryItem.nama_kategori}" will be removed from the category list.`}
+                >
                   <SubmitButton size="sm" variant="dangerOutline" pendingText="...">
                     Delete
                   </SubmitButton>

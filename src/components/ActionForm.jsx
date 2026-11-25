@@ -12,6 +12,7 @@ import {
 } from 'react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { showToast } from '@/components/Toaster';
+import { FieldErrorsContext } from '@/components/FieldError';
 
 const PendingContext = createContext(false);
 
@@ -26,6 +27,65 @@ function serializeForm(formElement) {
     }
   }
   return parts.join('&');
+}
+
+// ambil nama kolom dari label-nya (misal "Price (Rp)" jadi "Price") buat pesan error
+function readFieldLabel(fieldElement) {
+  let labelText = '';
+  if (fieldElement.id) {
+    const labelElement = fieldElement.form.querySelector(`label[for="${fieldElement.id}"]`);
+    if (labelElement) {
+      labelText = labelElement.textContent;
+    }
+  }
+  if (!labelText) {
+    labelText = fieldElement.getAttribute('aria-label') || '';
+  }
+  labelText = labelText.replace(/\(.*?\)/g, '').trim();
+  if (!labelText) {
+    return 'This field';
+  }
+  return labelText;
+}
+
+// bikin pesan error yg jelas sesuai jenis kesalahannya (kosong, minus, kepanjangan, dll)
+function buildFieldMessage(fieldElement) {
+  const validity = fieldElement.validity;
+  const label = readFieldLabel(fieldElement);
+  if (validity.valueMissing) {
+    if (fieldElement.type === 'file') {
+      return 'Please upload a photo.';
+    }
+    return `${label} is required.`;
+  }
+  if (validity.badInput || validity.stepMismatch) {
+    return `${label} must be a whole number.`;
+  }
+  if (validity.rangeUnderflow) {
+    if (Number(fieldElement.min) === 1) {
+      return `${label} must be greater than 0.`;
+    }
+    if (Number(fieldElement.min) === 0) {
+      return `${label} cannot be negative.`;
+    }
+    return `${label} must be at least ${fieldElement.min}.`;
+  }
+  if (validity.rangeOverflow) {
+    return `${label} must be at most ${fieldElement.max}.`;
+  }
+  if (validity.tooShort) {
+    return `${label} must be at least ${fieldElement.minLength} characters.`;
+  }
+  if (validity.tooLong) {
+    return `${label} must be at most ${fieldElement.maxLength} characters.`;
+  }
+  if (validity.typeMismatch) {
+    return `Please enter a valid ${label.toLowerCase()}.`;
+  }
+  if (validity.patternMismatch) {
+    return `${label} format is not valid.`;
+  }
+  return fieldElement.validationMessage;
 }
 
 export function usePendingForm() {
@@ -45,6 +105,7 @@ export default function ActionForm({
   showMessage = true,
   messageAsToast = false,
   skipIfUnchanged = false,
+  inlineErrors = true,
 }) {
   // kalau pakai toast, pesan dikirim langsung begitu server menjawab
   // (sebelum baris/form-nya hilang krn data di-refresh), jadi toast "berhasil dihapus" tetap muncul
@@ -65,6 +126,19 @@ export default function ActionForm({
   const formRef = useRef(null);
   const pendingDataRef = useRef(null);
   const savedSnapshotRef = useRef(null);
+
+  // error per kolom (tampil tetap di bawah kolomnya)
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [lastServerState, setLastServerState] = useState(state);
+  if (lastServerState !== state) {
+    setLastServerState(state);
+    // server bilang kolom mana yg salah: tampilkan di bawah kolom itu
+    if (inlineErrors && state && state.error && state.field) {
+      setFieldErrors({ [state.field]: state.error });
+    } else {
+      setFieldErrors({});
+    }
+  }
 
   // simpan isi awal form, buat cek apakah user benar2 mengubah sesuatu
   useEffect(() => {
@@ -90,8 +164,55 @@ export default function ActionForm({
     });
   }
 
+  // cek isian di browser dulu: kolom yg salah dikasih pesan merah di bawahnya
+  function checkFieldsInline(formElement) {
+    const nextErrors = {};
+    let firstInvalidField = null;
+    for (const fieldElement of formElement.elements) {
+      if (!fieldElement.willValidate || fieldElement.checkValidity()) {
+        continue;
+      }
+      const slotElement = fieldElement.closest('[data-field-slot]');
+      if (!slotElement) {
+        // kolom tanpa tempat pesan: pakai pesan bawaan browser
+        fieldElement.reportValidity();
+        return false;
+      }
+      const slotName = slotElement.getAttribute('data-field-slot');
+      if (!nextErrors[slotName]) {
+        nextErrors[slotName] = buildFieldMessage(fieldElement);
+      }
+      if (!firstInvalidField) {
+        firstInvalidField = fieldElement;
+      }
+    }
+    setFieldErrors(nextErrors);
+    if (firstInvalidField) {
+      firstInvalidField.focus();
+      return false;
+    }
+    return true;
+  }
+
+  // pesan merah kolom hilang begitu kolom itu diubah lagi
+  function handleFieldInput(inputEvent) {
+    const slotElement = inputEvent.target.closest('[data-field-slot]');
+    if (!slotElement) {
+      return;
+    }
+    const slotName = slotElement.getAttribute('data-field-slot');
+    if (fieldErrors[slotName]) {
+      const nextErrors = { ...fieldErrors };
+      delete nextErrors[slotName];
+      setFieldErrors(nextErrors);
+    }
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
+    if (inlineErrors && !checkFieldsInline(event.currentTarget)) {
+      return;
+    }
     const formData = new FormData(event.currentTarget);
 
     // tidak ada yg diubah: jangan kirim n jangan munculkan notifikasi apa pun
@@ -123,6 +244,9 @@ export default function ActionForm({
 
   let messageBox = null;
   if (messageAsToast) {
+    messageBox = null;
+  } else if (inlineErrors && state && state.error && state.field) {
+    // error sudah tampil di bawah kolomnya, tidak perlu kotak merah di atas
     messageBox = null;
   } else if (showMessage && state && state.error) {
     messageBox = (
@@ -156,10 +280,19 @@ export default function ActionForm({
 
   return (
     <PendingContext.Provider value={isPending}>
-      <form ref={formRef} onSubmit={handleSubmit} className={className}>
-        {messageBox}
-        {children}
-      </form>
+      <FieldErrorsContext.Provider value={fieldErrors}>
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          onInput={handleFieldInput}
+          onChange={handleFieldInput}
+          noValidate={inlineErrors}
+          className={className}
+        >
+          {messageBox}
+          {children}
+        </form>
+      </FieldErrorsContext.Provider>
 
 
       {confirmDialogNode}

@@ -192,32 +192,38 @@ async function readProductForm(formData) {
   const segmentValue = getString(formData, 'segmen');
 
   if (productName === '' || productDescription === '' || priceRaw === '') {
-    return { error: 'Please fill in the product name, description, and price.' };
+    if (productName === '') {
+      return { error: 'Product name is required.', field: 'nama_produk' };
+    }
+    if (productDescription === '') {
+      return { error: 'Description is required.', field: 'deskripsi' };
+    }
+    return { error: 'Price is required.', field: 'harga' };
   }
 
   if (!categoryId) {
-    return { error: 'Please choose a category.' };
+    return { error: 'Please choose a category.', field: 'kategori' };
   }
 
   if (productName.length < 3 || productName.length > 150) {
-    return { error: 'Product name must be 3–150 characters.' };
+    return { error: 'Product name must be 3–150 characters.', field: 'nama_produk' };
   }
 
   if (productDescription.length < 10) {
-    return { error: 'Description must be at least 10 characters.' };
+    return { error: 'Description must be at least 10 characters.', field: 'deskripsi' };
   }
 
   if (!isValidPrice(priceRaw)) {
-    return { error: 'Price must be a number greater than 0.' };
+    return { error: 'Price must be a number greater than 0.', field: 'harga' };
   }
 
   if (!SEGMENTS.includes(segmentValue)) {
-    return { error: 'Please choose a segment: Unisex, Women, Men, or Kids.' };
+    return { error: 'Please choose a segment: Unisex, Women, Men, or Kids.', field: 'kategori' };
   }
 
   const sizeData = readSizeStocks(formData);
   if (sizeData.error) {
-    return { error: sizeData.error };
+    return { error: sizeData.error, field: 'sizes' };
   }
 
   const categoryResult = await pool.query(
@@ -225,23 +231,23 @@ async function readProductForm(formData) {
     [categoryId]
   );
   if (categoryResult.rows.length === 0) {
-    return { error: 'Selected category does not exist.' };
+    return { error: 'Selected category does not exist.', field: 'kategori' };
   }
 
   const categoryRow = categoryResult.rows[0];
   const isAccessory = categoryRow.grup_kategori === 'Accessories';
 
   if (isAccessory && !sizeData.isSizeless) {
-    return { error: 'Accessories do not use sizes. Please fill in the stock only.' };
+    return { error: 'Accessories do not use sizes. Please fill in the stock only.', field: 'sizes' };
   }
 
   if (!isAccessory && sizeData.isSizeless) {
-    return { error: 'Clothing and shoes must have sizes. Please tick at least 1 size.' };
+    return { error: 'Clothing and shoes must have sizes. Please tick at least 1 size.', field: 'sizes' };
   }
 
   const categoryName = categoryRow.nama_kategori;
   if (!isSegmentAllowed(categoryName, segmentValue)) {
-    return { error: `${restrictionMessage(categoryName)} Please choose a matching segment.` };
+    return { error: `${restrictionMessage(categoryName)} Please choose a matching segment.`, field: 'kategori' };
   }
 
   return {
@@ -313,7 +319,8 @@ export async function createProductAction(prevState, formData) {
 
   const formResult = await readProductForm(formData);
   if (formResult.error) {
-    return { error: formResult.error };
+    // field: nama kolom yg salah, biar pesannya tampil di bawah kolom itu
+    return { error: formResult.error, field: formResult.field };
   }
 
   const uploadedFiles = getUploadedFiles(formData, 'gambar_files');
@@ -322,12 +329,12 @@ export async function createProductAction(prevState, formData) {
   }
 
   if (uploadedFiles.length > MAX_PRODUCT_IMAGES) {
-    return { error: `You can upload up to ${MAX_PRODUCT_IMAGES} photos per product.` };
+    return { error: `You can upload up to ${MAX_PRODUCT_IMAGES} photos per product.`, field: 'images' };
   }
 
   const fileValidationError = validateImageFiles(uploadedFiles);
   if (fileValidationError) {
-    return { error: fileValidationError };
+    return { error: fileValidationError, field: 'images' };
   }
 
   const savedImagePaths = await saveImageFiles(uploadedFiles, 'products', formResult.data.nama);
@@ -372,7 +379,8 @@ async function saveProductChanges(productId, storeId, formData) {
 
   const formResult = await readProductForm(formData);
   if (formResult.error) {
-    return { error: formResult.error };
+    // field: nama kolom yg salah, biar pesannya tampil di bawah kolom itu
+    return { error: formResult.error, field: formResult.field };
   }
 
   const currentImages = await getProductImages(productId, ownerCheck.rows[0].gambar);
@@ -388,7 +396,7 @@ async function saveProductChanges(productId, storeId, formData) {
   const totalImages = keptImages.length + newFiles.length;
 
   if (totalImages === 0) {
-    return { error: 'A product must have at least 1 photo.' };
+    return { error: 'A product must have at least 1 photo.', field: 'images' };
   }
 
   if (totalImages > MAX_PRODUCT_IMAGES) {
@@ -399,7 +407,7 @@ async function saveProductChanges(productId, storeId, formData) {
 
   const fileValidationError = validateImageFiles(newFiles);
   if (fileValidationError) {
-    return { error: fileValidationError };
+    return { error: fileValidationError, field: 'images' };
   }
 
   const newImagePaths = await saveImageFiles(newFiles, 'products', formResult.data.nama);

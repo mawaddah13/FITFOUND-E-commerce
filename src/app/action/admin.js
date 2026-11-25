@@ -389,6 +389,22 @@ export async function deleteUserAction(rawUserId, prevState, formData) {
     return { error: 'You cannot delete your own account.' };
   }
 
+  // seller (pesanan masuk ke tokonya) atau buyer (pesanan yg dia buat) yg masih punya pesanan aktif
+  // (belum selesai / belum dibatalkan) tidak boleh dihapus
+  const activeOrderResult = await pool.query(
+    `SELECT COUNT(*)::int AS total
+     FROM orders o
+     LEFT JOIN stores s ON s.id_store = o.id_store
+     WHERE (s.id_user = $1 OR o.id_user = $1) AND o.status_order IN ('pending', 'processing', 'shipped')`,
+    [userId]
+  );
+  const activeOrderCount = activeOrderResult.rows[0].total;
+  if (activeOrderCount > 0) {
+    return {
+      error: `This user still has ${activeOrderCount} active order(s), so the account cannot be deleted yet. Try again after those orders are completed or cancelled.`,
+    };
+  }
+
   // simpan nama file ktp n wajah dulu (kalau seller) biar bisa ikut dihapus
   const photoResult = await pool.query(
     'SELECT foto_ktp, foto_wajah FROM stores WHERE id_user = $1',
@@ -517,22 +533,24 @@ export async function deleteCategoryAction(rawCategoryId, prevState, formData) {
   );
   const usedProductCount = usageResult.rows[0].total;
 
+  // kategori yg masih dipakai produk tidak boleh dihapus (muncul toast, kategori tetap ada)
   if (usedProductCount > 0) {
     return {
-      error: `This category is still used by ${usedProductCount} product(s). Move or delete those products first.`,
+      error: `This category is still used by ${usedProductCount} product(s), so it cannot be deleted yet. Move or delete those products first.`,
     };
   }
 
-  const deleteResult = await pool.query('DELETE FROM categories WHERE id_category = $1', [
-    categoryId,
-  ]);
+  const deleteResult = await pool.query(
+    'DELETE FROM categories WHERE id_category = $1 RETURNING nama_kategori',
+    [categoryId]
+  );
   if (deleteResult.rowCount === 0) {
     return { error: 'Category not found.' };
   }
 
   revalidatePath('/admin/categories');
   revalidatePath('/', 'layout');
-  return { success: 'Category deleted.' };
+  return { success: `"${deleteResult.rows[0].nama_kategori}" has been deleted.` };
 }
 
 // hapus produk jg file foto galeri pas diatur sama admin
